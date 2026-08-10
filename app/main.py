@@ -28,12 +28,23 @@ from app.agent.memory import get_session_history
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-# Inicialización de la App FastAPI
+from fastapi import FastAPI, Depends, Header, HTTPException, UploadFile, File, Form, Request
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# Configuración del Limiter para protección de cuota (60 peticiones/minuto por IP)
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     description="API para el Agente Conversacional de CV basado en RAG estricto, Qdrant Cloud y estándar Open Responses."
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Configuración de CORS
 app.add_middleware(
@@ -44,26 +55,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # ==========================================
 # Endpoints HTTP
 # ==========================================
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    """Endpoint de verificación de estado y disponibilidad del servicio."""
+    """
+    Endpoint de verificación de estado con pre-warming liviano de dependencias para mitigar Cold Starts.
+    """
+    db_status = "connected"
+    qdrant_status = "connected"
+    
+    # Pre-warming liviano en background
+    try:
+        from app.rag.retriever import qdrant_client
+        qdrant_client.get_collections()
+    except Exception:
+        qdrant_status = "warning"
+
     return {
         "status": "ok",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION,
+        "qdrant_status": qdrant_status,
         "timestamp": int(time.time())
     }
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["Agent Chat"])
-def chat_endpoint(req: ChatRequest):
+@limiter.limit("60/minute")
+def chat_endpoint(request: Request, req: ChatRequest):
     """
-    Endpoint de conversación simplificado para clientes Web o Chat UI.
+    Endpoint de conversación simplificado para clientes Web o Chat UI con Rate Limiting.
     """
     session_id = req.session_id or f"session_{uuid.uuid4().hex[:8]}"
     logger.info("Procesando consulta en /chat para sesión %s", session_id)
@@ -81,10 +105,19 @@ def chat_endpoint(req: ChatRequest):
 
 
 @app.post("/v1/responses", response_model=OpenResponsesPayload, tags=["Open Responses API Standard"])
-def create_response(req: ResponsesRequest):
+@limiter.limit("60/minute")
+def create_response(request: Request, req: ResponsesRequest):
     """
     Endpoint interoperable compatible con la especificación abierta Open Responses (openresponses.org).
+    Mapea nombres de modelo arbitrarios ("gpt-4", etc.) a cv-agent-v1 y maneja stream=True según la especificación.
     """
+    if req.stream:
+        # El spec de Open Responses indica rechazar solicitudes de streaming si el servidor solo opera en sync
+        raise HTTPException(
+            status_code=400,
+            detail="Streaming mode (stream=true) is not supported by this agent endpoint. Please set stream=false."
+        )
+
     session_id = req.previous_response_id or f"session_{uuid.uuid4().hex[:8]}"
     
     # Extraer el último mensaje del usuario desde el array de input
@@ -96,6 +129,7 @@ def create_response(req: ResponsesRequest):
     try:
         result = run_agent_workflow(message=last_user_message, session_id=session_id)
         reply_text = result["reply"]
+        metrics = result.get("metrics", {})
 
         response_payload = OpenResponsesPayload(
             id=f"resp_{uuid.uuid4().hex}",
@@ -107,7 +141,8 @@ def create_response(req: ResponsesRequest):
                     content=[OutputContentText(text=reply_text)]
                 )
             ],
-            output_text=reply_text
+            output_text=reply_text,
+            usage=metrics.get("usage", {})
         )
         return response_payload
 

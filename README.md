@@ -45,13 +45,15 @@ El agente expone sus capacidades a través de una API construida en **FastAPI**,
 | Componente | Tecnología Seleccionada | Razón Arquitectónica |
 |---|---|---|
 | **API Backend** | FastAPI + Pydantic v2 | Alto rendimiento asíncrono, OpenAPI auto-generado y tipado estricto. |
-| **Estándar Interoperable** | Open Responses (`/v1/responses`) | Permite a cualquier SDK de agentes o cliente OpenAI usar este agente como un proveedor de modelos estandarizado. |
-| **Base de Datos Vectorial** | Qdrant Cloud (`cv_chunks`) | Búsqueda por similitud de cosenos, filtros por payload (`tipo`, `cv_version`) y recreación atómica de versiones. |
+| **Protección & Cuota** | `slowapi` Rate Limiter (60 req/min) | Previene ataques de denegación de servicio y el consumo acelerado de cuotas de LLM/Embeddings. |
+| **Estándar Interoperable** | Open Responses (`/v1/responses`) | Compatible con el SDK oficial de OpenAI y catálogos de agentes; mapea modelos arbitrarios y maneja `stream=false` según la especificación. |
+| **Base de Datos Vectorial** | Qdrant Cloud (`cv_chunks`) | Búsqueda por similitud de cosenos, filtros por payload (`tipo`, `cv_version`) e índices de metadatos automáticos. |
 | **Embeddings por API** | HF Router API (`bge-small-en-v1.5`) | Generación ligera por API sin descargar PyTorch/Torch localmente (ahorra ~800MB RAM, total app ~120MB). |
 | **LLM Principal** | Hugging Face Inference Router (`Llama-3.1-8B-Instruct`) | Inferencia primaria gratuita por API para maximizar ahorro de cuotas. |
 | **LLM Fallback** | Groq API (`llama-3.3-70b-versatile`) | Conmutación de respaldo automática de ultra-baja latencia (LPU) en caso de fallos de cuota. |
 | **Orquestación & Grafo** | LangGraph + LangChain Core | Grafo de estados explícito para controlar el flujo, guardrails y recuperación. |
 | **Persistencia (Checkpointer)** | Neon / Supabase PostgreSQL (`PostgresSaver`) | Almacenamiento persistente de conversaciones por `session_id` con fallback a `MemorySaver`. |
+| **Mitigación de Cold Starts**| Pre-warming en `GET /health` | Pings livianos en segundo plano a las bases de datos para evitar timeouts de catálogos externos. |
 
 ---
 

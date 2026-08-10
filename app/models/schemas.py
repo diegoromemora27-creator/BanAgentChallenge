@@ -123,3 +123,4 @@ class OpenResponsesPayload(BaseModel):
     model: str
     output: List[OutputMessage]
     output_text: str
+    usage: Dict[str, int] = Field(default_factory=dict, description="Uso de tokens en el spec de Open Responses")
