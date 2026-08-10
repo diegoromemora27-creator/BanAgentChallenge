@@ -68,6 +68,7 @@ class ChatResponse(BaseModel):
     """Respuesta generada por el endpoint /chat."""
     reply: str = Field(..., description="Respuesta del agente conversacional")
     sources: List[str] = Field(default_factory=list, description="Fuentes o trozos de contexto de donde se extrajo la respuesta")
+    metrics: Dict[str, Any] = Field(default_factory=dict, description="Métricas de observabilidad (tokens, latencia, proveedor)")
 
 
 class CVUploadResponse(BaseModel):

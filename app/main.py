@@ -72,7 +72,8 @@ def chat_endpoint(req: ChatRequest):
         result = run_agent_workflow(message=req.message, session_id=session_id)
         return ChatResponse(
             reply=result["reply"],
-            sources=result.get("sources", [])
+            sources=result.get("sources", []),
+            metrics=result.get("metrics", {})
         )
     except Exception as exc:
         logger.error("Error procesando solicitud en /chat: %s", exc)

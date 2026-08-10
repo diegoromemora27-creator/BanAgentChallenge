@@ -138,6 +138,9 @@ def node_generate_response(state: AgentState) -> AgentState:
         reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
 
     state["llm_response"] = reply_text
+    state["latency_ms"] = round(latency_ms, 2)
+    state["provider"] = provider_used
+    state["usage"] = usage_info
 
     # Registro estructurado del evento de observabilidad
     log_interaction_structured(
@@ -146,7 +149,8 @@ def node_generate_response(state: AgentState) -> AgentState:
         retrieved_chunks=context_chunks,
         response_text=reply_text,
         latency_ms=latency_ms,
-        provider_used=provider_used
+        provider_used=provider_used,
+        usage_info=usage_info
     )
 
     # Guardar en memoria
@@ -228,5 +232,10 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
 
     return {
         "reply": final_state["llm_response"],
-        "sources": final_state.get("sources", [])
+        "sources": final_state.get("sources", []),
+        "metrics": {
+            "latency_ms": final_state.get("latency_ms", 0),
+            "provider": final_state.get("provider", "Hugging Face"),
+            "usage": final_state.get("usage", {})
+        }
     }
