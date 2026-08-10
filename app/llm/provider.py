@@ -17,36 +17,27 @@ def generate_llm_response(
     max_tokens: int = 600
 ) -> Dict[str, Any]:
     """
-    Intenta generar respuesta usando Hugging Face Inference como proveedor primario (para ahorrar cuota).
-    En caso de fallo o límite de cuota, utiliza Groq como respaldo.
-
-    Args:
-        system_prompt: Prompt del sistema para grounding.
-        input_items: Historial/mensajes de la consulta.
-        temperature: Temperatura del modelo.
-        max_tokens: Cantidad máxima de tokens.
-
-    Returns:
-        Dict con {"text": str, "provider": str, "raw": Any}
+    Intenta generar respuesta usando Groq API como proveedor primario (LPU ultra-rápido Llama-3.3-70b).
+    En caso de límite de cuota o fallo, utiliza Hugging Face Inference Router como respaldo.
     """
     try:
-        return call_hf_llm_fallback(
+        return call_groq_llm(
             system_prompt=system_prompt,
             input_items=input_items,
             temperature=temperature,
             max_tokens=max_tokens
         )
-    except Exception as hf_err:
-        logger.warning("Hugging Face API falló (%s). Iniciando fallback hacia Groq API...", hf_err)
+    except Exception as groq_err:
+        logger.warning("Groq API falló (%s). Iniciando fallback hacia Hugging Face Router API...", groq_err)
         try:
-            return call_groq_llm(
+            return call_hf_llm_fallback(
                 system_prompt=system_prompt,
                 input_items=input_items,
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-        except Exception as groq_err:
-            logger.error("Error crítico: Ambos proveedores LLM (Hugging Face y Groq) fallaron: %s", groq_err)
+        except Exception as hf_err:
+            logger.error("Error crítico: Ambos proveedores LLM (Groq y Hugging Face) fallaron: %s", hf_err)
             return {
                 "text": "Actualmente me encuentro experimentando problemas técnicos temporales de conexión con los modelos de lenguaje. Por favor intenta de nuevo en unos momentos.",
                 "provider": "None",

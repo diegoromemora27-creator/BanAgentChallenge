@@ -25,11 +25,11 @@ COPY data/ ./data
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 
-EXPOSE 7860
+EXPOSE 10000
 
 # Healthcheck interno del contenedor
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')" || exit 1
+  CMD python -c "import urllib.request, os; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", 10000)}/health')" || exit 1
 
-# Comando de inicio compatible con Render (expande variable $PORT) y Hugging Face (puerto 7860)
-CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"
+# Comando de inicio compatible con Render (usa puerto dinámico $PORT de Render o 10000 por defecto)
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"
