@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     QDRANT_URL: str = Field(default="", description="URL de Qdrant Cloud o local")
     QDRANT_API_KEY: str = Field(default="", description="API Key para Qdrant Cloud")
     
+    # Persistencia Externa con Supabase PostgreSQL (Checkpointer)
+    DATABASE_URL: str = Field(default="", description="URI de conexión a Supabase PostgreSQL para persistencia de estado")
+    
     # RAG Settings
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_VECTOR_SIZE: int = 384

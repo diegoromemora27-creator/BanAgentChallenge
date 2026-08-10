@@ -46,6 +46,7 @@ El agente expone sus capacidades a través de una API construida en **FastAPI**,
 | **API Backend** | FastAPI + Pydantic v2 | Alto rendimiento asíncrono, OpenAPI auto-generado y tipado estricto. |
 | **Estándar Interoperable** | Open Responses (`/v1/responses`) | Permite a cualquier SDK de agentes o cliente OpenAI usar este agente como un proveedor de modelos estandarizado. |
 | **Base de Datos Vectorial** | Qdrant Cloud (`cv_chunks`) | Búsqueda por similitud de cosenos, filtros por payload y recreación atómica de versiones. |
+| **Persistencia (Checkpointer)** | Supabase PostgreSQL | Almacenamiento persistente de estados de LangGraph (`PostgresSaver`) para retomar conversaciones. |
 | **Embeddings** | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Modelo liviano (384 dim) multilenguaje ejecutado localmente en CPU en <30ms. |
 | **LLM Principal** | Groq (`llama-3.3-70b-versatile`) | Inferencia de ultra-baja latencia (LPU) con ventana de contexto amplia. |
 | **LLM Fallback** | Hugging Face Inference (`meta-llama/Llama-3.1-8B-Instruct`) | Resiliencia garantizada si Groq agota su cuota de rate limit. |

@@ -129,8 +129,30 @@ def node_generate_response(state: AgentState) -> AgentState:
 
 
 # ==========================================
-# 3. Construcción del Grafo LangGraph
+# 3. Construcción del Grafo LangGraph con Checkpointer (Supabase / Memory)
 # ==========================================
+
+from langgraph.checkpoint.memory import MemorySaver
+from app.config import settings
+
+checkpointer = None
+
+if settings.DATABASE_URL:
+    try:
+        from langgraph.checkpoint.postgres import PostgresSaver
+        from psycopg_pool import ConnectionPool
+        
+        logger.info("Conectando a Supabase PostgreSQL para persistencia de Checkpoints...")
+        connection_pool = ConnectionPool(conninfo=settings.DATABASE_URL, max_size=10)
+        checkpointer = PostgresSaver(connection_pool)
+        checkpointer.setup()
+        logger.info("Checkpointer Postgres (Supabase) configurado e inicializado correctamente.")
+    except Exception as exc:
+        logger.warning("No se pudo inicializar PostgresSaver con DATABASE_URL (%s). Usando MemorySaver por defecto.", exc)
+        checkpointer = MemorySaver()
+else:
+    logger.info("DATABASE_URL no configurada. Usando MemorySaver para estados del agente.")
+    checkpointer = MemorySaver()
 
 workflow = StateGraph(AgentState)
 
@@ -147,8 +169,8 @@ workflow.add_edge("classify_intent", "retrieve_context")
 workflow.add_edge("retrieve_context", "generate_response")
 workflow.add_edge("generate_response", END)
 
-# Compilación del Grafo Executable
-agent_executor = workflow.compile()
+# Compilación del Grafo Executable con el Checkpointer configurado
+agent_executor = workflow.compile(checkpointer=checkpointer)
 
 
 def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, Any]:
@@ -166,7 +188,10 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "sources": []
     }
 
-    final_state = agent_executor.invoke(initial_state)
+    # Configuración de sesión / thread en LangGraph
+    config = {"configurable": {"thread_id": session_id}}
+
+    final_state = agent_executor.invoke(initial_state, config=config)
 
     return {
         "reply": final_state["llm_response"],
