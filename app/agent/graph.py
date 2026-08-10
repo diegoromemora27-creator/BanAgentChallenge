@@ -143,12 +143,17 @@ if settings.DATABASE_URL:
         from psycopg_pool import ConnectionPool
         
         logger.info("Conectando a Supabase PostgreSQL para persistencia de Checkpoints...")
-        connection_pool = ConnectionPool(conninfo=settings.DATABASE_URL, max_size=10)
+        # Usa kwargs de timeout para no bloquear el proceso si IPv6 o la red no es alcanzable
+        connection_pool = ConnectionPool(
+            conninfo=settings.DATABASE_URL,
+            max_size=10,
+            kwargs={"connect_timeout": 3}
+        )
         checkpointer = PostgresSaver(connection_pool)
         checkpointer.setup()
         logger.info("Checkpointer Postgres (Supabase) configurado e inicializado correctamente.")
     except Exception as exc:
-        logger.warning("No se pudo inicializar PostgresSaver con DATABASE_URL (%s). Usando MemorySaver por defecto.", exc)
+        logger.warning("No se pudo conectar a Supabase PostgreSQL (%s). Usando MemorySaver por defecto.", exc)
         checkpointer = MemorySaver()
 else:
     logger.info("DATABASE_URL no configurada. Usando MemorySaver para estados del agente.")
