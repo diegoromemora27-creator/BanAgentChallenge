@@ -31,5 +31,5 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:7860/health')" || exit 1
 
-# Comando de inicio compatible con Hugging Face Spaces y Render
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Comando de inicio compatible con Render (expande variable $PORT) y Hugging Face (puerto 7860)
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-7860}"

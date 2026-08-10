@@ -59,6 +59,16 @@ app.add_middleware(
 # Endpoints HTTP
 # ==========================================
 
+@app.get("/", tags=["Health"])
+def root():
+    """Endpoint raíz que redirige la bienvenida e indica la documentación."""
+    return {
+        "message": f"Bienvenido a {settings.PROJECT_NAME}",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
+
 @app.get("/health", tags=["Health"])
 def health_check():
     """
