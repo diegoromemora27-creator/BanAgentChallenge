@@ -16,7 +16,8 @@ def log_interaction_structured(
     retrieved_chunks: List[Dict[str, Any]],
     response_text: str,
     latency_ms: float,
-    provider_used: str = "Groq"
+    provider_used: str = "Hugging Face",
+    usage_info: Dict[str, int] = None
 ):
     """
     Emite un log en formato JSON estructurado a stdout.
@@ -33,7 +34,8 @@ def log_interaction_structured(
         "top_score": top_score,
         "response_length": len(response_text),
         "latency_ms": round(latency_ms, 2),
-        "provider": provider_used
+        "provider": provider_used,
+        "usage": usage_info or {}
     }
 
     logger.info(json.dumps(log_payload, ensure_ascii=False))

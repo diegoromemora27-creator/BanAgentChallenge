@@ -107,6 +107,11 @@ def node_generate_response(state: AgentState) -> AgentState:
     input_items = list(history)
     input_items.append({"role": "user", "content": state["user_message"]})
 
+    import time
+    from app.logging_config import log_interaction_structured
+
+    start_time = time.time()
+
     llm_out = generate_llm_response(
         system_prompt=system_prompt,
         input_items=input_items,
@@ -114,13 +119,35 @@ def node_generate_response(state: AgentState) -> AgentState:
         max_tokens=600
     )
 
+    latency_ms = (time.time() - start_time) * 1000
     reply_text = llm_out.get("text", "")
+    provider_used = llm_out.get("provider", "Unknown")
     
+    # Extrae métricas de tokens si las devuelve el proveedor
+    raw_resp = llm_out.get("raw")
+    usage_info = {}
+    if raw_resp and hasattr(raw_resp, "usage") and raw_resp.usage:
+        usage_info = {
+            "prompt_tokens": getattr(raw_resp.usage, "prompt_tokens", 0),
+            "completion_tokens": getattr(raw_resp.usage, "completion_tokens", 0),
+            "total_tokens": getattr(raw_resp.usage, "total_tokens", 0)
+        }
+
     # Guardrail de salida
     if not validate_output_guardrails(reply_text, context_chunks):
         reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
 
     state["llm_response"] = reply_text
+
+    # Registro estructurado del evento de observabilidad
+    log_interaction_structured(
+        session_id=state["session_id"],
+        query=state["user_message"],
+        retrieved_chunks=context_chunks,
+        response_text=reply_text,
+        latency_ms=latency_ms,
+        provider_used=provider_used
+    )
 
     # Guardar en memoria
     add_message_to_session(state["session_id"], "user", state["user_message"])

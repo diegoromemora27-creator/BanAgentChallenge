@@ -145,3 +145,43 @@ async def upload_cv_endpoint(
     except Exception as exc:
         logger.error("Error crítico durante la ingesta del CV: %s", exc)
         raise HTTPException(status_code=500, detail="No se pudo procesar e indexar el CV.")
+
+
+@app.get("/cv/info", tags=["Ingestion & Knowledge Base"])
+def get_cv_info():
+    """
+    Endpoint para inspeccionar los datos y chunks actualmente almacenados en Qdrant Cloud.
+    """
+    from app.rag.retriever import qdrant_client
+    try:
+        # Obtiene la cantidad de puntos almacenados
+        collection_info = qdrant_client.get_collection(collection_name=settings.QDRANT_COLLECTION_NAME)
+        points_count = collection_info.points_count
+
+        # Desplaza hasta 20 puntos para inspeccionar el contenido real
+        scroll_res = qdrant_client.scroll(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            limit=20,
+            with_payload=True,
+            with_vectors=False
+        )
+        
+        stored_chunks = [
+            {
+                "id": p.id,
+                "texto": p.payload.get("texto", ""),
+                "tipo": p.payload.get("tipo", ""),
+                "cv_version": p.payload.get("cv_version", "")
+            }
+            for p in scroll_res[0]
+        ]
+
+        return {
+            "collection_name": settings.QDRANT_COLLECTION_NAME,
+            "total_chunks": points_count,
+            "status": collection_info.status,
+            "chunks_inspeccion": stored_chunks
+        }
+    except Exception as exc:
+        logger.error("Error al consultar info de Qdrant: %s", exc)
+        raise HTTPException(status_code=500, detail=f"No se pudo consultar Qdrant Cloud: {str(exc)}")

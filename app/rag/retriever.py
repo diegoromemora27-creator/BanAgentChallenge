@@ -50,8 +50,10 @@ def get_qdrant_client() -> QdrantClient:
 qdrant_client = get_qdrant_client()
 
 
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, PayloadSchemaType
+
 def ensure_collection_exists():
-    """Garantiza la existencia de la colección en Qdrant."""
+    """Garantiza la existencia de la colección en Qdrant e índice de metadatos."""
     try:
         collections = [c.name for c in qdrant_client.get_collections().collections]
         if settings.QDRANT_COLLECTION_NAME not in collections:
@@ -63,6 +65,22 @@ def ensure_collection_exists():
                     distance=Distance.COSINE
                 ),
             )
+        
+        # Garantiza los índices de payload requeridos por Qdrant Cloud para borrados y filtros
+        try:
+            qdrant_client.create_payload_index(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                field_name="cv_version",
+                field_schema=PayloadSchemaType.KEYWORD
+            )
+            qdrant_client.create_payload_index(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                field_name="tipo",
+                field_schema=PayloadSchemaType.KEYWORD
+            )
+        except Exception:
+            pass # Si el índice ya existe, ignora la advertencia
+
     except Exception as err:
         logger.error("Error verificando/creando la colección en Qdrant: %s", err)
 
