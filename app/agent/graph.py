@@ -17,6 +17,7 @@ from app.agent.memory import get_session_history, add_message_to_session
 from app.rag.retriever import retrieve_cv_context
 from app.llm.provider import generate_llm_response
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # ==========================================

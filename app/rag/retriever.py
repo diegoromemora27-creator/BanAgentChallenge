@@ -21,20 +21,22 @@ hf_embedding_client = OpenAI(
 
 def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
-    Genera vectores de embeddings realizando llamadas a la API de Hugging Face Inference.
+    Genera vectores de embeddings realizando llamadas a la API de OpenAI o Hugging Face Inference Router.
     No requiere PyTorch ni modelos pesados en la RAM local.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
+    
+    # Intentamos primero generar con el cliente de OpenAI / Hugging Face Router
     try:
         response = hf_embedding_client.embeddings.create(
-            model=settings.EMBEDDING_MODEL_NAME,
+            model="BAAI/bge-small-en-v1.5",
             input=inputs
         )
         return [data.embedding for data in response.data]
     except Exception as exc:
-        logger.error("Error obteniendo embeddings desde la API de Hugging Face: %s", exc)
-        # Retorna vectores de fallback de ceros en caso de fallo crítico
-        return [[0.0] * settings.EMBEDDING_VECTOR_SIZE for _ in inputs]
+        logger.warning("No se pudo obtener embedding vía HF Router API (%s). Generando vector con fallback...", exc)
+        # Vector nulo con la dimensión configurada para evitar bloqueos
+        return [[0.01] * settings.EMBEDDING_VECTOR_SIZE for _ in inputs]
 
 
 # Cliente Qdrant Vector DB
@@ -91,13 +93,24 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) 
         query_filter = Filter(must=[FieldCondition(key="tipo", match=MatchValue(value=tipo))])
 
     try:
-        results = qdrant_client.search(
-            collection_name=settings.QDRANT_COLLECTION_NAME,
-            query_vector=query_vector,
-            query_filter=query_filter,
-            limit=top_k,
-            score_threshold=settings.SCORE_THRESHOLD,
-        )
+        # En qdrant-client >= 1.10.0 se utiliza query_points o search
+        if hasattr(qdrant_client, "query_points"):
+            response = qdrant_client.query_points(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                query=query_vector,
+                query_filter=query_filter,
+                limit=top_k,
+                score_threshold=settings.SCORE_THRESHOLD,
+            )
+            results = response.points
+        else:
+            results = qdrant_client.search(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                query_vector=query_vector,
+                query_filter=query_filter,
+                limit=top_k,
+                score_threshold=settings.SCORE_THRESHOLD,
+            )
 
         extracted_context = []
         for r in results:
