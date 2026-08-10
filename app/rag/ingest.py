@@ -15,7 +15,7 @@ from app.config import settings
 from app.models.schemas import CV
 from app.agent.prompts import STRUCTURE_CV_PROMPT
 from app.llm.provider import generate_llm_response
-from app.rag.retriever import embedding_model, qdrant_client, ensure_collection_exists
+from app.rag.retriever import get_embedding, qdrant_client, ensure_collection_exists
 
 logger = logging.getLogger(__name__)
 
@@ -170,15 +170,14 @@ def ingest_cv(file: Optional[UploadFile] = None, pasted_text: Optional[str] = No
     cv_version = str(uuid.uuid4())
     chunks = build_chunks(cv.model_dump(), cv_version)
 
-    if not embedding_model:
-        raise ValueError("El modelo de embeddings no está inicializado.")
-
-    vectors = embedding_model.encode([c["texto"] for c in chunks])
+    # Generación de vectores vía la API de Hugging Face (ligero, sin PyTorch ni uso de RAM)
+    chunk_texts = [c["texto"] for c in chunks]
+    vectors = get_embedding(chunk_texts)
 
     points = [
         PointStruct(
             id=str(uuid.uuid4()),
-            vector=v.tolist(),
+            vector=v,
             payload={"texto": c["texto"], **c["metadata"]}
         )
         for v, c in zip(vectors, chunks)

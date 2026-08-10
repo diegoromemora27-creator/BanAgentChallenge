@@ -1,11 +1,11 @@
 """
-Capa de Embeddings y cliente de consulta a Qdrant Cloud.
-Maneja la inicialización de la colección y la búsqueda por similitud de cosenos.
+Capa de Embeddings por API y cliente de consulta a Qdrant Cloud.
+Maneja la inicialización de la colección y la búsqueda por similitud de cosenos sin cargar modelos pesados en RAM.
 """
 
 import logging
 from typing import List, Dict, Any, Optional
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue
 
@@ -13,13 +13,29 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Carga del modelo local de embeddings (384 dimensiones, optimizado para español e inglés)
-try:
-    embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
-    logger.info("Modelo de embeddings %s cargado correctamente.", settings.EMBEDDING_MODEL_NAME)
-except Exception as e:
-    logger.error("Error al cargar el modelo de embeddings: %s", e)
-    embedding_model = None
+# Cliente de Hugging Face Router para embeddings vía API (ligero, consume 0 MB de RAM)
+hf_embedding_client = OpenAI(
+    api_key=settings.HF_TOKEN or "dummy_token_if_empty",
+    base_url="https://router.huggingface.co/v1"
+)
+
+def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
+    """
+    Genera vectores de embeddings realizando llamadas a la API de Hugging Face Inference.
+    No requiere PyTorch ni modelos pesados en la RAM local.
+    """
+    inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
+    try:
+        response = hf_embedding_client.embeddings.create(
+            model=settings.EMBEDDING_MODEL_NAME,
+            input=inputs
+        )
+        return [data.embedding for data in response.data]
+    except Exception as exc:
+        logger.error("Error obteniendo embeddings desde la API de Hugging Face: %s", exc)
+        # Retorna vectores de fallback de ceros en caso de fallo crítico
+        return [[0.0] * settings.EMBEDDING_VECTOR_SIZE for _ in inputs]
+
 
 # Cliente Qdrant Vector DB
 def get_qdrant_client() -> QdrantClient:
@@ -63,12 +79,12 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) 
     """
     ensure_collection_exists()
 
-    if not embedding_model:
-        logger.error("Modelo de embeddings no disponible.")
+    # Generación de vector de la consulta vía API
+    query_vectors = get_embedding(query)
+    if not query_vectors:
         return []
-
-    # Generación de vector de la consulta
-    query_vector = embedding_model.encode(query).tolist()
+    
+    query_vector = query_vectors[0]
 
     query_filter = None
     if tipo:

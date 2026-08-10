@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Persistencia Externa con Supabase PostgreSQL (Checkpointer)
     DATABASE_URL: str = Field(default="", description="URI de conexión a Supabase PostgreSQL para persistencia de estado")
     
-    # RAG Settings
+    # RAG Settings (Embeddings vía API sin carga local en RAM)
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_VECTOR_SIZE: int = 384
     QDRANT_COLLECTION_NAME: str = "cv_chunks"
