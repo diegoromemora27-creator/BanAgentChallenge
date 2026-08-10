@@ -1,0 +1,11 @@
+fastapi>=0.110.0
+uvicorn>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+qdrant-client>=1.8.0
+sentence-transformers>=2.5.0
+pypdf>=4.1.0
+openai>=1.14.0
+langgraph>=0.0.26
+langchain-core>=0.1.30
+python-multipart>=0.0.9
