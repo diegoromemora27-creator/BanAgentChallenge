@@ -1,0 +1,30 @@
+Juan Pérez
+AI Engineer Generativo & Backend Developer
+Ciudad de México, México
+
+RESUMEN PROFESIONAL
+Ingeniero en Inteligencia Artificial Generativa con más de 4 años de experiencia diseñando y desplegando sistemas RAG avanzados, microservicios en FastAPI y agentes conversacionales. Especializado en integración de modelos LLM con bases de datos vectoriales como Qdrant.
+
+EXPERIENCIA LABORAL
+AI Engineer Senior | Tech Solutions Inc. | 2024 - Presente
+- Lideré el desarrollo de un agente conversacional RAG que redujo el tiempo de atención en un 40%.
+- Diseñé pipelines de ingesta multi-fuente con FastAPI, Python, Qdrant y Docker.
+- Tecnologías: Python, FastAPI, Qdrant, Llama 3, Groq, Docker, LangGraph.
+- Logros: Optimización de latencia en inferencia a menos de 800ms.
+
+Desarrollador Backend | SoftCloud | 2022 - 2024
+- Construí arquitecturas de microservicios e integré proveedores de LLMs.
+- Tecnologías: Python, Docker, PostgreSQL, REST APIs.
+
+PROYECTOS DESTACADOS
+Sistema de Ingesta Inteligente de Documentos
+- Problema: Ineficiencia al procesar CVs no estructurados en formato PDF y TXT.
+- Solución: Pipeline automatizado con extracción LLM y almacenamiento en Qdrant.
+- Arquitectura: FastAPI + Sentence Transformers + Qdrant Cloud.
+- Resultado: Procesamiento de más de 10,000 documentos con 98% de precisión en estructuración.
+
+HABILIDADES TÉCNICAS
+- Lenguajes: Python, SQL
+- Frameworks & Libs: FastAPI, LangGraph, Pydantic, SentenceTransformers, PyPDF
+- Bases de Datos Vectoriales: Qdrant Cloud
+- Despliegue & DevOps: Docker, Hugging Face Spaces, Render, GitHub Actions

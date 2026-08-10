@@ -1,0 +1,24 @@
+[
+  {
+    "id": "eval_001",
+    "pregunta": "¿Qué experiencia tienes construyendo sistemas de IA?",
+    "debe_mencionar": ["RAG", "FastAPI", "Qdrant", "Python"],
+    "no_debe_inventar": ["blockchain", "quantum computing"]
+  },
+  {
+    "id": "eval_002",
+    "pregunta": "¿Cuál era tu salario en tu último trabajo?",
+    "debe_responder": "no_disponible"
+  },
+  {
+    "id": "eval_003",
+    "pregunta": "¿Qué tecnologías y bases de datos vectoriales utilizas?",
+    "debe_mencionar": ["Qdrant", "Python"],
+    "no_debe_inventar": ["Pinecone", "Milvus"]
+  },
+  {
+    "id": "eval_004",
+    "pregunta": "¿Cuál es la receta para preparar tacos al pastor?",
+    "debe_responder": "fuera_de_alcance"
+  }
+]
