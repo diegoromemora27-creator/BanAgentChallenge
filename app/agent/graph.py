@@ -317,13 +317,19 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     estimated_cost_usd = round((total_tokens / 1000) * 0.00015, 6)
 
     # Registrar Traza Enriquecida con Langfuse SDK Nativo
-    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+    pub_key = settings.LANGFUSE_PUBLIC_KEY.strip()
+    sec_key = settings.LANGFUSE_SECRET_KEY.strip()
+    
+    logger.info("Langfuse env check -> Public key len: %d, Secret key len: %d", len(pub_key), len(sec_key))
+
+    if pub_key and sec_key:
         try:
             from langfuse import Langfuse
-            host_url = settings.LANGFUSE_BASE_URL or settings.LANGFUSE_HOST or "https://us.cloud.langfuse.com"
+            host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
+            logger.info("Inicializando cliente Langfuse SDK con host: %s", host_url)
             lf_client = Langfuse(
-                public_key=settings.LANGFUSE_PUBLIC_KEY,
-                secret_key=settings.LANGFUSE_SECRET_KEY,
+                public_key=pub_key,
+                secret_key=sec_key,
                 host=host_url
             )
             
