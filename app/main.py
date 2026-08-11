@@ -6,7 +6,7 @@ Expone los endpoints /health, /chat, /v1/responses (Open Responses) y /cv/upload
 import time
 import uuid
 import logging
-from typing import Optional
+from typing import Optional, Any
 from fastapi import FastAPI, Depends, Header, Query, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
