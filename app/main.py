@@ -94,27 +94,27 @@ def health_check():
 
 
 @app.get("/metrics", tags=["Observability"])
-def prometheus_metrics(authorization: Optional[str] = Header(default=None)):
+def prometheus_metrics(
+    authorization: Optional[str] = Header(default=None),
+    token: Optional[str] = None
+):
     """
     Endpoint nativo de Prometheus autenticado para scraping seguro de Grafana Cloud.
-    Requiere un Header 'Authorization: Bearer banorte_metrics_secret_token_2026' (o Basic Auth).
+    Soporta Header 'Authorization: Bearer banorte_metrics_secret_token_2026' O parámetro URL '?token=banorte_metrics_secret_token_2026'.
     Si se llama sin autenticación, devuelve 401 Unauthorized para validar contra el test de Grafana.
     """
     expected_token = settings.METRICS_TOKEN
-    
-    if not authorization:
+    provided_token = None
+
+    if authorization:
+        provided_token = authorization.replace("Bearer ", "").replace("Basic ", "").strip()
+    elif token:
+        provided_token = token.strip()
+
+    if not provided_token or provided_token != expected_token:
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Authorization header required for /metrics scraping.",
-            headers={"WWW-Authenticate": "Bearer"}
-        )
-    
-    # Soporta Bearer Token o Basic Auth
-    token_str = authorization.replace("Bearer ", "").replace("Basic ", "").strip()
-    if token_str != expected_token and authorization != f"Bearer {expected_token}":
-        raise HTTPException(
-            status_code=401,
-            detail="Unauthorized: Invalid metrics token.",
+            detail="Unauthorized: Authorization header or valid token query parameter required for /metrics scraping.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
