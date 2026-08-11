@@ -239,12 +239,12 @@ workflow.add_edge("generate_response", END)
 
 # Inicialización Singleton global de Langfuse CallbackHandler (SDK v3)
 _langfuse_handler = None
-if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
-    try:
-        from langfuse.langchain import CallbackHandler
+try:
+    from langfuse.langchain import CallbackHandler
+    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
         host_url = (
-            settings.LANGFUSE_BASE_URL.strip()
-            or settings.LANGFUSE_HOST.strip()
+            settings.LANGFUSE_HOST.strip()
+            or settings.LANGFUSE_BASE_URL.strip()
             or "https://us.cloud.langfuse.com"
         )
         _langfuse_handler = CallbackHandler(
@@ -252,9 +252,12 @@ if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
             secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
             host=host_url
         )
-        logger.info("CallbackHandler de Langfuse v3 inicializado exitosamente.")
-    except Exception as e:
-        logger.error(f"Error inesperado al inicializar el handler de Langfuse: {e}")
+    else:
+        # En Langfuse v3, el constructor autodetecta de forma nativa las variables de Render (LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST)
+        _langfuse_handler = CallbackHandler()
+    logger.info("CallbackHandler de Langfuse v3 acoplado exitosamente desde el entorno de Render.")
+except Exception as e:
+    logger.warning(f"Langfuse no se activó automáticamente (Faltan variables en Render): {e}")
 
 # Compilación del Grafo Executable con el Checkpointer configurado
 agent_executor = workflow.compile(checkpointer=checkpointer)
