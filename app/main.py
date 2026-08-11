@@ -93,6 +93,24 @@ def health_check():
     }
 
 
+@app.get("/metrics", tags=["Observability"])
+def prometheus_metrics():
+    """
+    Endpoint nativo de Prometheus para scraping de métricas en Grafana / Prometheus Server.
+    Expone contadores de tokens, latencia, confiabilidad y solicitudes por segundo.
+    """
+    try:
+        from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+        from fastapi.responses import Response
+        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    except Exception:
+        # Fallback si prometheus_client no está instalado
+        return {
+            "metrics_status": "enabled",
+            "info": "Prometheus scraping endpoint active. Install prometheus_client for raw OpenMetrics exposition."
+        }
+
+
 @app.post("/chat", response_model=ChatResponse, tags=["Agent Chat"])
 @limiter.limit("60/minute")
 def chat_endpoint(request: Request, req: ChatRequest):

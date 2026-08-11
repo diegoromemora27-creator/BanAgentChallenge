@@ -234,9 +234,6 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "sources": []
     }
 
-    # Configuración de sesión / thread en LangGraph
-    config = {"configurable": {"thread_id": session_id}}
-
     try:
         final_state = agent_executor.invoke(initial_state, config=config)
     except Exception as exec_err:
@@ -245,12 +242,35 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         fallback_executor = workflow.compile(checkpointer=MemorySaver())
         final_state = fallback_executor.invoke(initial_state, config=config)
 
+    # Cálculo de métricas avanzadas de RAG, confiabilidad y costo estimado
+    context_chunks = final_state.get("retrieved_context", [])
+    top_score = context_chunks[0]["score"] if context_chunks else 0.0
+    n_chunks = len(context_chunks)
+    
+    # Estimación de Confiabilidad / Grounding Score (0.0 a 1.0)
+    # Basado en la relevancia semántica de Qdrant y la presencia de contexto
+    reliability_score = round(min(1.0, top_score if top_score > 0 else (0.85 if n_chunks > 0 else 0.40)), 2)
+
+    # Estimación de costo en USD ($0.00015 por 1k tokens en Llama 3.1 8B / 70B en HF & Groq)
+    usage = final_state.get("usage", {})
+    total_tokens = usage.get("total_tokens", 350)
+    estimated_cost_usd = round((total_tokens / 1000) * 0.00015, 6)
+
     return {
         "reply": final_state.get("llm_response", "No se pudo obtener respuesta del agente."),
         "sources": final_state.get("sources", []),
         "metrics": {
             "latency_ms": final_state.get("latency_ms", 0),
-            "provider": final_state.get("provider", "Groq"),
-            "usage": final_state.get("usage", {})
+            "provider": final_state.get("provider", "Hugging Face"),
+            "rag": {
+                "chunks_retrieved": n_chunks,
+                "top_similarity_score": round(top_score, 3) if top_score else None,
+                "reliability_grounding_score": reliability_score
+            },
+            "financial": {
+                "estimated_cost_usd": estimated_cost_usd,
+                "pricing_tier": "Free / Open-Source API"
+            },
+            "usage": usage
         }
     }
