@@ -260,21 +260,23 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     callbacks = []
     if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
         try:
-            # En v2/v3 de langfuse el callback de langchain está en langfuse.langchain
             try:
-                from langfuse.langchain import CallbackHandler
-            except ImportError:
                 from langfuse.callback import CallbackHandler
+            except ModuleNotFoundError:
+                try:
+                    from langfuse.langchain import CallbackHandler
+                except ModuleNotFoundError:
+                    from langfuse import CallbackHandler
 
-            host_url = settings.LANGFUSE_BASE_URL or settings.LANGFUSE_HOST or "https://us.cloud.langfuse.com"
+            host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
             langfuse_handler = CallbackHandler(
-                public_key=settings.LANGFUSE_PUBLIC_KEY,
-                secret_key=settings.LANGFUSE_SECRET_KEY,
+                public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
+                secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
                 host=host_url,
                 session_id=session_id
             )
             callbacks.append(langfuse_handler)
-            logger.info("Langfuse Tracing activado para la sesión %s", session_id)
+            logger.info("Langfuse CallbackHandler activado para la sesión %s", session_id)
         except Exception as lf_err:
             logger.warning("No se pudo inicializar el CallbackHandler de Langfuse: %s", lf_err)
 
