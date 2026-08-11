@@ -237,6 +237,28 @@ workflow.add_edge("classify_intent", "retrieve_context")
 workflow.add_edge("retrieve_context", "generate_response")
 workflow.add_edge("generate_response", END)
 
+# Inicialización Singleton global de Langfuse CallbackHandler
+_langfuse_handler = None
+if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+    try:
+        try:
+            from langfuse.callback import CallbackHandler
+        except ModuleNotFoundError:
+            try:
+                from langfuse.langchain import CallbackHandler
+            except ModuleNotFoundError:
+                from langfuse import CallbackHandler
+
+        host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
+        _langfuse_handler = CallbackHandler(
+            public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
+            secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
+            host=host_url
+        )
+        logger.info("Langfuse CallbackHandler Singleton inicializado con éxito para host: %s", host_url)
+    except Exception as lf_init_err:
+        logger.warning("No se pudo inicializar el CallbackHandler global de Langfuse: %s", lf_init_err)
+
 # Compilación del Grafo Executable con el Checkpointer configurado
 agent_executor = workflow.compile(checkpointer=checkpointer)
 
@@ -256,33 +278,17 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "sources": []
     }
 
-    # Configuración de sesión / thread en LangGraph y callbacks opcionales (Langfuse)
-    callbacks = []
-    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
-        try:
-            try:
-                from langfuse.callback import CallbackHandler
-            except ModuleNotFoundError:
-                try:
-                    from langfuse.langchain import CallbackHandler
-                except ModuleNotFoundError:
-                    from langfuse import CallbackHandler
-
-            host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
-            langfuse_handler = CallbackHandler(
-                public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
-                secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
-                host=host_url,
-                session_id=session_id
-            )
-            callbacks.append(langfuse_handler)
-            logger.info("Langfuse CallbackHandler activado para la sesión %s", session_id)
-        except Exception as lf_err:
-            logger.warning("No se pudo inicializar el CallbackHandler de Langfuse: %s", lf_err)
-
+    # Configuración combinada de LangGraph y metadatos de sesión para Langfuse
+    callbacks = [_langfuse_handler] if _langfuse_handler else []
     config = {
-        "configurable": {"thread_id": session_id},
-        "callbacks": callbacks
+        "configurable": {
+            "thread_id": session_id
+        },
+        "callbacks": callbacks,
+        "metadata": {
+            "langfuse_session_id": session_id,
+            "user_id": session_id
+        }
     }
 
     from app.metrics import AGENT_LATENCY_SECONDS, AGENT_REQUESTS_TOTAL, RAG_RELIABILITY_SCORE
