@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Token de Seguridad para Protección del Endpoint /metrics en Grafana Cloud
     METRICS_TOKEN: str = Field(default="banorte_metrics_secret_token_2026", description="Token Bearer para autenticar Grafana Cloud scraper")
     
+    # API Key de Control de Acceso Estricto para Endpoints (Configurable en Render.com via env API_KEY)
+    API_KEY: str = Field(default="banorte_challenge_api_key_2026", description="API Key obligatoria para proteger endpoints de la API")
+    
     # RAG Settings (Embeddings vía API sin carga local en RAM)
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_VECTOR_SIZE: int = 384
@@ -40,6 +43,5 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-from pydantic import Field
 
 settings = Settings()

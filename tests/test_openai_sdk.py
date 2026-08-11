@@ -13,7 +13,7 @@ class TestOpenAISDKIntegration(unittest.TestCase):
         # Se configura el cliente oficial de OpenAI apuntando a la base_url local
         client = OpenAI(
             base_url="http://localhost:7860/v1",
-            api_key="not-needed"
+            api_key="banorte_challenge_api_key_2026"
         )
 
         try:

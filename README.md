@@ -13,7 +13,7 @@ El agente expone sus capacidades a través de una API construida en **FastAPI**,
                          │        Usuario / Web       │
                          │  (Chat UI o Cliente HTTP) │
                          └─────────────┬──────────────┘
-                                       │ HTTPS
+                                       │ HTTPS (Bearer Auth)
                                        ▼
                     ┌───────────────────────────────────┐
                     │     FastAPI (Contenedor Docker)   │
@@ -40,15 +40,16 @@ El agente expone sus capacidades a través de una API construida en **FastAPI**,
 | Componente | Tecnología Seleccionada | Razón Arquitectónica |
 |---|---|---|
 | **API Backend** | FastAPI + Pydantic v2 | Alto rendimiento asíncrono, OpenAPI auto-generado y tipado estricto. |
-| **Protección & Cuota** | `slowapi` Rate Limiter (60 req/min) | Previene ataques de denegación de servicio y consumo acelerado de cuotas. |
-| **Estándar Interoperable** | Open Responses (`/v1/responses`) | Compatible con el SDK oficial de OpenAI y catálogos de agentes. |
+| **Seguridad & Autenticación** | Header `Authorization` / `X-API-Key` | Control de acceso basado en API Key configurable (`API_KEY`) para proteger endpoints públicos. |
+| **Protección & Cuota** | `slowapi` Rate Limiter (60 req/min) | Previene ataques de denegación de servicio y consumo acelerado de cuotas de LLMs. |
+| **Estándar Interoperable** | Open Responses (`/v1/responses`) | Compatible con el SDK oficial de OpenAI (`openai` Python/TS) y catálogos de agentes. |
 | **Base de Datos Vectorial** | Qdrant Cloud (`cv_chunks`) | Búsqueda por similitud de cosenos con metadatos y fallback a `:memory:`. |
 | **Embeddings por API** | HF Router API (`bge-small-en-v1.5`) | Generación por API sin carga local en RAM (ahorra ~800MB RAM, app ~120MB). |
 | **LLM Principal & Fallback** | HF Inference Router (`Llama-3.1-8B`) + Groq (`Llama-3.3-70B`) | Conmutación automática de alta disponibilidad en caso de límites de cuota. |
 | **Orquestación & Grafo** | LangGraph + LangChain Core | Grafo de estados explícito con 4 nodos secuenciales y guardrails estrictos. |
 | **Persistencia de Estados** | Neon / Supabase PostgreSQL (`PostgresSaver`) | Almacenamiento persistente de conversaciones por `session_id` con fallback a `MemorySaver`. |
 | **Tracing & Observabilidad** | Langfuse Cloud SDK v3 (`from langfuse.langchain import CallbackHandler`) | Trazabilidad detallada de spans, ejecuciones de grafo y latencias. |
-| **Métricas & Dashboards** | Prometheus Client + Grafana Cloud | Scraping del endpoint `/metrics` protegido por token. |
+| **Métricas & Dashboards** | Prometheus Client + Grafana Cloud | Scraping del endpoint `/metrics` protegido por token `METRICS_TOKEN`. |
 
 ---
 
@@ -69,7 +70,25 @@ El agente expone sus capacidades a través de una API construida en **FastAPI**,
 
 ---
 
-## 🛰️ 3. Trazabilidad y Observabilidad Avanzada
+## 🛡️ 3. Demostración de Grounding Estricto y Cero Alucinaciones
+
+El sistema aplica una política de **Grounding Estricto** garantizada por un pipeline de tres etapas:
+
+1. **Guardrail de Entrada (Input Moderation):** Detecta ataques de Prompt Injection e instrucciones maliciosas antes de tocar el grafo.
+2. **Clasificación de Intención (Intent Classification):** Etiqueta la consulta como `CV_QUESTION`, `GREETING_OR_META` o `OUT_OF_BOUNDS`. Si la consulta está fuera del dominio (ej. política, recetas de cocina, física cuántica), el nodo se corta inmediatamente.
+3. **Guardrail de Salida (Grounding Verification):** Verifica que la respuesta generada por el LLM esté respaldada por los trozos de texto recuperados de Qdrant.
+
+### 🧪 Ejemplos de Comportamiento del Agente:
+
+| Caso de Prueba | Entrada del Usuario | Respuesta del Agente | Explicación del Comportamiento |
+|---|---|---|---|
+| **Duda en el CV (In-Bounds)** | *¿Qué proyectos ha desarrollado en Inteligencia Artificial?* | *"El candidato lideró el desarrollo del 'Sistema de Ingesta Inteligente de Documentos', un pipeline automatizado con extracción LLM y almacenamiento en Qdrant..."* | **Respuesta fundamentada:** Extrae contexto real indexado en Qdrant y fundamenta la respuesta. |
+| **Consulta Fuera de Dominio (Out-of-Bounds)** | *¿Cuál es la receta para preparar tacos al pastor?* | *"Como agente conversacional enfocado en el perfil profesional del candidato, solo estoy capacitado para responder preguntas sobre su experiencia laboral, proyectos, habilidades e historia profesional."* | **Filtro de Intención:** Corta la ejecución sin consultar a Qdrant ni gastar tokens inútilmente. |
+| **Duda no evidenciada en el CV** | *¿Cuántos años de experiencia tiene el candidato administrando clústeres de Kubernetes?* | *"No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."* | **Guardrail de Salida (Cero Alucinación):** Si Qdrant no devuelve evidencia suficiente, el sistema bloquea cualquier intento de invención del LLM. |
+
+---
+
+## 🛰️ 4. Trazabilidad y Observabilidad Avanzada
 
 ### A. Langfuse Cloud (SDK v3 Integration)
 El sistema utiliza el SDK v3 de Langfuse a través de la importación oficial moderna:
@@ -77,33 +96,59 @@ El sistema utiliza el SDK v3 de Langfuse a través de la importación oficial mo
 from langfuse.langchain import CallbackHandler
 ```
 
-- **Autodetección de Entorno:**
-  El inicializador revisa el objeto `settings` de la aplicación y asigna las variables globales `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` y `LANGFUSE_HOST` en `os.environ`.
-- **Compatibilidad con Render.com:**
-  Si las credenciales no se encuentran en `settings`, invoca el constructor cero-argumentos `CallbackHandler()`, el cual autodetecta de forma nativa las variables de entorno de Render (`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`).
-- **Asociación de Sesiones:**
-  El callback pasa `langfuse_session_id` en el diccionario de metadatos de LangGraph (`config["metadata"]`), agrupando todas las trazas del usuario en el panel de Langfuse.
-
-### B. Grafana Cloud & Prometheus Metrics
-La API expone un endpoint `/metrics` en formato Prometheus estándar:
-- **Protección de Seguridad:** Soporta autenticación mediante Bearer Token configurado en la variable `METRICS_TOKEN` (`Header Authorization: Bearer <token>` o parámetro query `?token=<token>`).
-- **Métricas Exportadas:**
-  - `AGENT_REQUESTS_TOTAL`: Total de solicitudes procesadas por el agente.
-  - `AGENT_LATENCY_SECONDS`: Histograma de latencia completa del flujo agéntico.
-  - `NODE_EXECUTION_DURATION_SECONDS`: Latencia por cada nodo del grafo (`guardrails_input`, `classify_intent`, `retrieve_context`, `generate_response`).
-  - `NODE_ERRORS_TOTAL`: Contador de errores por nodo.
-  - `RAG_RETRIEVED_DOCUMENTS_COUNT`: Cantidad de chunks recuperados por búsqueda.
-  - `RAG_RELIABILITY_SCORE`: Calificación cuantitativa de grounding/relevancia.
-  - `LLM_TOKENS_TOTAL`: Tokens consumidos (`prompt` y `completion`) desglosados por proveedor (`Hugging Face`, `Groq`).
-  - `LLM_COST_ESTIMATED_TOTAL`: Costo financiero estimado acumulado en USD.
-- **Dashboard de Grafana:** Incluido en el repositorio en `grafana_dashboard_banorte.json`, listo para importar en Grafana Cloud.
+#### Paso a Paso para Configurar Langfuse Cloud:
+1. **Crear Cuenta y Proyecto:** Registra una cuenta en [Langfuse Cloud](https://cloud.langfuse.com/) y crea un nuevo proyecto.
+2. **Generar API Keys:** Ve a **Settings -> API Keys** y genera un nuevo par de llaves (`Public Key` y `Secret Key`).
+3. **Configurar Variables en Render.com / `.env`:**
+   ```env
+   LANGFUSE_PUBLIC_KEY=pk-lf-your_public_key_here
+   LANGFUSE_SECRET_KEY=sk-lf-your_secret_key_here
+   LANGFUSE_HOST=https://us.cloud.langfuse.com
+   ```
+4. **Visualización de Trazas:**
+   Cada petición enviada al agente agrupa automáticamente sus spans (Guardrails, Intent Classification, Qdrant Retrieval, LLM Generation) bajo el identificador de sesión `langfuse_session_id`, permitiendo analizar latencia p95, costo por llamada y calidad de las respuestas en el dashboard de Langfuse.
 
 ---
 
-## 🛠️ 4. Guía de Instalación y Configuración Local
+### B. Grafana Cloud & Prometheus Metrics
+
+La API expone un endpoint `/metrics` en formato Prometheus estándar para scraping continuo.
+
+#### Paso a Paso para Integrar con Grafana Cloud:
+1. **Crear Stack en Grafana Cloud:** Crea una cuenta en [Grafana Cloud](https://grafana.com/) y accede a tu instancia de Prometheus.
+2. **Configurar el Scraper (Prometheus Scrape Job):**
+   Añade la siguiente configuración en tu Prometheus Server o agente de scraping de Grafana Agent / Alloy:
+   ```yaml
+   scrape_configs:
+     - job_name: 'banorte_cv_agent'
+       scrape_interval: 15s
+       metrics_path: '/metrics'
+       params:
+         token: ['your_secret_metrics_token_for_grafana_here'] # Configurado en METRICS_TOKEN
+       scheme: https
+       static_configs:
+         - targets: ['tu-app-en-render.onrender.com']
+   ```
+3. **Importar el Dashboard Pre-construido (`grafana_dashboard_banorte.json`):**
+   - En Grafana Cloud, ve al menú **Dashboards -> New -> Import**.
+   - Sube o pega el contenido del archivo `grafana_dashboard_banorte.json` ubicado en la raíz del repositorio.
+   - Selecciona la fuente de datos Prometheus configurada y haz clic en **Import**.
+4. **Métricas Clave Disponibles en el Dashboard:**
+   - **`AGENT_REQUESTS_TOTAL`**: Total de solicitudes procesadas agrupadas por status (`success`, `fallback`).
+   - **`AGENT_LATENCY_SECONDS`**: Histograma de latencia completa del flujo agéntico.
+   - **`NODE_EXECUTION_DURATION_SECONDS`**: Latencia desglosada por cada uno de los 4 nodos de LangGraph (`guardrails_input`, `classify_intent`, `retrieve_context`, `generate_response`).
+   - **`NODE_ERRORS_TOTAL`**: Conteo de excepciones por nodo.
+   - **`RAG_RETRIEVED_DOCUMENTS_COUNT`**: Cantidad de trozos de texto recuperados de Qdrant por consulta.
+   - **`RAG_RELIABILITY_SCORE`**: Puntaje cuantitativo de confiabilidad y grounding.
+   - **`LLM_TOKENS_TOTAL`**: Total de tokens (`prompt` y `completion`) por proveedor (`Hugging Face`, `Groq`).
+   - **`LLM_COST_ESTIMATED_TOTAL`**: Costo monetario estimado acumulado en USD.
+
+---
+
+## 🛠️ 5. Guía de Instalación y Configuración Local
 
 ### Requisitos Previos
-- Python 3.10 o superior (Probado en Python 3.11 / 3.14).
+- Python 3.10 a 3.14 (Dependencias ancladas y verificadas).
 - Git.
 - Docker (Opcional, para ejecución contenida).
 
@@ -124,7 +169,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-### Paso 3: Instalar Dependencias
+### Paso 3: Instalar Dependencias Ancladas
 ```bash
 pip install -r requirements.txt
 ```
@@ -138,23 +183,24 @@ cp .env.example .env
 Edita `.env` agregando tus credenciales:
 ```env
 # LLM Providers
-GROQ_API_KEY=gsk_tu_groq_key_aqui
-HF_TOKEN=hf_tu_huggingface_token_aqui
+GROQ_API_KEY=your_groq_api_key_here
+HF_TOKEN=your_hf_token_here
 
-# Qdrant Vector Database
-QDRANT_URL=https://tu-cluster.cloud.qdrant.io
-QDRANT_API_KEY=tu_qdrant_api_key_aqui
+# Vector Database (Qdrant Cloud)
+QDRANT_URL=https://your-qdrant-cluster.cloud.qdrant.io:6333
+QDRANT_API_KEY=your_qdrant_api_key_here
 
-# Persistencia Supabase / Neon PostgreSQL
-DATABASE_URL=postgresql://neondb_owner:tu_password@ep-xxx-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
+# Persistencia de Estado (Neon / Supabase Postgres)
+DATABASE_URL=postgresql://neondb_owner:your_password@ep-xxx-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
 
-# Observabilidad con Langfuse Cloud (v3)
-LANGFUSE_PUBLIC_KEY=pk-lf-tu_public_key
-LANGFUSE_SECRET_KEY=sk-lf-tu_secret_key
+# Observabilidad & Tracing (Langfuse Cloud v3)
+LANGFUSE_PUBLIC_KEY=pk-lf-your_public_key_here
+LANGFUSE_SECRET_KEY=sk-lf-your_secret_key_here
 LANGFUSE_HOST=https://us.cloud.langfuse.com
 
-# Métricas Grafana Cloud
-METRICS_TOKEN=banorte_metrics_secret_token_2026
+# Seguridad & Control de Acceso
+API_KEY=your_optional_api_key_for_endpoints_here
+METRICS_TOKEN=your_secret_metrics_token_for_grafana_here
 ```
 
 ### Paso 5: Iniciar el Servidor API
@@ -167,50 +213,116 @@ Accede a la documentación interactiva OpenAPI (Swagger) en:
 
 ---
 
-## 🛰️ 5. Especificación de Endpoints HTTP
+## 🛰️ 6. Especificación de Endpoints HTTP e Interoperabilidad (Open Responses)
 
-| Método | Endpoint | Descripción |
-|---|---|---|
-| `GET` | `/health` | Verificación de estado del servicio y salud de bases de datos. |
-| `POST` | `/chat` | Endpoint de conversación simplificado con Rate Limiting (`message`, `session_id`). |
-| `POST` | `/v1/responses` | Endpoint interoperable compatible con el estándar **Open Responses API**. |
-| `POST` | `/cv/upload` | Ingesta multi-fuente (PDF, TXT, texto pegado) e indexación en Qdrant. |
-| `GET` | `/cv/info` | Inspección de chunks y metadatos actualmente indexados en Qdrant. |
-| `GET` | `/metrics` | Endpoint de métricas en formato Prometheus para Grafana Cloud. |
+### 📌 Resumen de Endpoints
 
----
-
-## 🧪 6. Suite de Pruebas y Benchmark LLM-as-a-Judge
-
-### Pruebas Unitarias Automatizadas
-```bash
-python -m unittest discover -s tests -p "test_*.py"
-```
-
-### Benchmark "LLM-as-a-Judge"
-Mide cuantitativamente **Fidelidad** y **Relevancia** (1.0 a 5.0) evaluando el agente contra preguntas de prueba (`tests/eval_dataset.json`):
-```bash
-python tests/eval_llm_judge.py
-```
+| Método | Endpoint | Seguridad / Auth | Descripción |
+|---|---|---|---|
+| `GET` | `/health` | Pública | Verificación de estado del servicio y salud de bases de datos. |
+| `POST` | `/chat` | Bearer Auth (`API_KEY`) | Endpoint de conversación simplificado con Rate Limiting (`message`, `session_id`). |
+| `POST` | `/v1/responses` | Bearer Auth (`API_KEY`) | Endpoint interoperable compatible con el estándar **Open Responses API**. |
+| `POST` | `/cv/upload` | Bearer Auth (`API_KEY`) | Ingesta multi-fuente (PDF, TXT, texto pegado) e indexación en Qdrant. |
+| `GET` | `/cv/info` | Pública | Inspección de chunks y metadatos actualmente indexados en Qdrant. |
+| `GET` | `/metrics` | Query Token / Bearer | Endpoint de métricas en formato Prometheus para Grafana Cloud. |
 
 ---
 
-## 🐳 7. Contenerización con Docker y Docker Compose
+### 🌐 A. Estándar Open Responses API (`POST /v1/responses`)
+
+El endpoint `/v1/responses` sigue la especificación abierta **Open Responses API**, permitiendo que cualquier agente externo, cliente HTTP o SDK oficial de OpenAI consuma las respuestas como un modelo LLM estándar.
+
+#### 1. Ejemplo con cURL (Con Autenticación por API Key)
+```bash
+curl -X POST "https://tu-app-en-render.onrender.com/v1/responses" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer tu_api_key_aqui" \
+  -d '{
+    "model": "cv-agent-v1",
+    "previous_response_id": "sesion_agente_100",
+    "input": [
+      {
+        "role": "user",
+        "content": "¿Qué proyectos relevantes de IA ha liderado el candidato?"
+      }
+    ]
+  }'
+```
+
+#### Respuesta JSON del Estándar Open Responses:
+```json
+{
+  "id": "resp_8f91b72a0e414c5c8a91bf5409",
+  "object": "response",
+  "created_at": 1786423100,
+  "status": "completed",
+  "model": "cv-agent-v1",
+  "output": [
+    {
+      "type": "message",
+      "id": "msg_c9a1b02319df40",
+      "role": "assistant",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "El candidato lideró el proyecto 'Sistema de Ingesta Inteligente de Documentos', un pipeline automatizado con extracción LLM y Qdrant Cloud que procesó más de 10,000 documentos con 98% de precisión...",
+          "annotations": []
+        }
+      ]
+    }
+  ],
+  "output_text": "El candidato lideró el proyecto...",
+  "usage": {
+    "prompt_tokens": 615,
+    "completion_tokens": 320,
+    "total_tokens": 935
+  }
+}
+```
+
+#### 2. Consumo mediante el SDK Oficial de Python (`openai`)
+```python
+from openai import OpenAI
+
+# Redirige el cliente oficial de OpenAI hacia nuestro agente conversacional
+client = OpenAI(
+    base_url="https://tu-app-en-render.onrender.com/v1",
+    api_key="tu_api_key_aqui" # Pasa la API_KEY configurada en Render.com (ej. banorte_challenge_api_key_2026)
+)
+
+response = client.chat.completions.create(
+    model="cv-agent-v1",
+    messages=[
+        {"role": "user", "content": "¿Qué tecnologías domina el candidato en FastAPI y Vector DBs?"}
+    ]
+)
+
+print("Respuesta del Agente:", response.choices[0].message.content)
+```
+
+---
+
+## ⚡ 7. Gestión de Cold Starts y Rendimiento en Render.com (Free Tier)
+
+### ❄️ ¿Por qué ocurre el Cold Start en Render Free Tier?
+El plan gratuito de Render desactiva la instancia del contenedor tras 15 minutos de inactividad. Al recibir una nueva petición:
+1. Render inicia el contenedor desde cero (~15-30s).
+2. FastAPI carga las dependencias e inicializa los pools de conexión a PostgreSQL y Qdrant.
+
+### 🛡️ Estrategias de Mitigación Implementadas:
+1. **Pre-Warming en `GET /health`:** El endpoint `/health` ejecuta pings livianos en segundo plano para 'despertar' las conexiones a las bases de datos vectoriales antes de procesar una petición pesada de chat.
+2. **Ping Periódico (Keep-Alive Recomendado):** Para pruebas o evaluaciones continuas del jurado, se recomienda utilizar un servicio de Keep-Alive gratuito (ej. [cron-job.org](https://cron-job.org) o [UptimeRobot](https://uptimerobot.com)) haciendo un ping `GET` cada 10 minutos a `https://tu-app-en-render.onrender.com/health`.
+
+---
+
+## 🐳 8. Contenerización con Docker y Docker Compose
 
 ### ¿Cómo funciona Docker en esta Arquitectura?
-Como todas las bases de datos y servicios de observabilidad son administrados en la nube (**Qdrant Cloud**, **Neon PostgreSQL**, **Langfuse Cloud**), la contenerización se centra exclusivamente en empaquetar la aplicación FastAPI de forma portable y segura.
+Dado que las bases de datos y herramientas de observabilidad operan en la nube (**Qdrant Cloud**, **Neon PostgreSQL**, **Langfuse Cloud**), Docker aísla y empaqueta exclusivamente el servicio web FastAPI.
 
-- **`Dockerfile`**: Es el manifiesto principal que utiliza **Render.com** (o cualquier PaaS/Docker Host) para construir e iniciar el servicio en producción (escuchando en `$PORT` o `10000`).
-- **`docker-compose.yml`**: Herramienta utilitaria para levantar el contenedor de la aplicación localmente reutilizando las credenciales de tu archivo `.env` sin distorsionar URLs ni levantar contenedores redundantes.
-
-### Construcción y Ejecución con Docker
-```bash
-# Construir la imagen optimizada
-docker build -t cv-agent:latest .
-
-# Ejecutar el contenedor conectándolo a las credenciales del .env
-docker run -d -p 10000:10000 --env-file .env --name cv-agent-container cv-agent:latest
-```
+- **`Dockerfile`**: Es el manifiesto que lee **Render.com** (o cualquier servidor Docker) para empaquetar e iniciar la API escuchando en `$PORT` o `10000`.
+- **`docker-compose.yml`**: Herramienta de pruebas locales para ejecutar el contenedor de la API cargando las variables de tu archivo `.env`.
 
 ### Ejecución Local con Docker Compose
 ```bash
@@ -219,18 +331,33 @@ docker-compose up --build
 
 ---
 
-## 🚀 8. Despliegue en Render.com
+## 🧠 9. Justificación de Decisiones Arquitectónicas & Trade-offs (Q&A de la Demo)
 
-1. Conecta este repositorio de GitHub a tu servicio Web en **Render.com**.
-2. Render detectará automáticamente el `Dockerfile`.
-3. Configura las siguientes variables de entorno en el panel de Render (**Environment**):
-   - `LANGFUSE_PUBLIC_KEY`
-   - `LANGFUSE_SECRET_KEY`
-   - `LANGFUSE_HOST` (`https://us.cloud.langfuse.com` o la URL de tu instancia)
-   - `GROQ_API_KEY`
-   - `HF_TOKEN`
-   - `QDRANT_URL`
-   - `QDRANT_API_KEY`
-   - `DATABASE_URL`
-   - `METRICS_TOKEN`
-4. El despliegue levantará automáticamente en HTTPS exponiendo la documentación Swagger en `/docs`.
+Para la evaluación del **Reto IA Banorte**, a continuación se detallan las decisiones clave de arquitectura e ingeniería:
+
+### 1. ¿Por qué LangGraph en lugar de una cadena simple (`LLMChain`)?
+- **Control Finito de Estados:** `LLMChain` o pipelines lineales de LangChain son 'cajas negras' difíciles de pausar, bifurcar o auditar.
+- **Grafo de Estados Explícito:** LangGraph nos permite implementar un ciclo determinista de 4 nodos secuenciales (`guardrails_input` ➔ `classify_intent` ➔ `retrieve_context` ➔ `generate_response`). Si un guardrail falla, el grafo corta la ejecución inmediatamente sin pasar al LLM ni consumir tokens.
+
+### 2. ¿Por qué Qdrant Cloud y no `pgvector` en PostgreSQL (Neon/Supabase)?
+- **Aislamiento de Cargas y Escalabilidad:** Aunque ya utilizamos PostgreSQL para el checkpointer de LangGraph, delegar la búsqueda vectorial a Qdrant Cloud evita sobrecargar el pool de conexiones de la base de datos relacional durante consultas masivas de embeddings.
+- **Búsqueda Filtrada de Alto Rendimiento:** Qdrant está escrito en Rust y ofrece índices HNSW nativos con filtrado por metadatos (`tipo`, `cv_version`) a nivel de sub-milisegundo, además de fallback transparente a memoria (`:memory:`) para pruebas unitarias sin dependencias externas.
+
+### 3. ¿Qué Trade-offs se aceptaron al elegir Render Free Tier frente a infraestructura dedicada?
+- **Trade-off:** La latencia inicial de cold start (15-30s tras inactividad) frente a la ventaja de despliegue en la nube a costo cero y alta seguridad en contenedores Docker HTTPS.
+- **Mitigación:** Se implementó pre-warming automático en el endpoint de salud `/health` y fallback de LLM entre Hugging Face Router API y Groq LPU para mantener latencias por debajo de 1.2s una vez caliente el servicio.
+
+---
+
+## 🔗 10. Enlaces y Despliegues del Proyecto
+
+A continuación se presentan los accesos a los servicios y dashboards del proyecto:
+
+- 🚀 **Servicio API en Producción (Render):** `https://tu-app-en-render.onrender.com`
+- 📚 **Documentación Swagger / OpenAPI:** `https://tu-app-en-render.onrender.com/docs`
+- 🩺 **Endpoint de Healthcheck:** `https://tu-app-en-render.onrender.com/health`
+- 📊 **Endpoint de Métricas Prometheus:** `https://tu-app-en-render.onrender.com/metrics?token=your_secret_metrics_token_for_grafana_here`
+- 📈 **Dashboard Grafana Cloud:** `https://tu-org.grafana.net/d/tu-dashboard-id`
+- 🔍 **Trazabilidad Langfuse Cloud:** `https://cloud.langfuse.com/project/tu-proyecto-id`
+- 🗄️ **Cluster Qdrant Cloud:** `https://tu-cluster.cloud.qdrant.io`
+- 🐘 **Base de Datos Neon PostgreSQL:** `https://console.neon.tech/app/projects/tu-proyecto-id`
