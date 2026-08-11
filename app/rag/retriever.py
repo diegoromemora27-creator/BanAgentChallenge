@@ -23,29 +23,27 @@ import requests
 
 def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
-    Genera vectores de embeddings semánticos reales consumiendo la API gratuita de Hugging Face.
+    Genera vectores de embeddings semánticos reales consumiendo la API de Hugging Face.
     Utiliza el modelo oficial 'sentence-transformers/all-MiniLM-L6-v2' (dimensión 384).
     Consume 0 MB de RAM local.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
-    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    api_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
     headers = {"Authorization": f"Bearer {settings.HF_TOKEN}"} if settings.HF_TOKEN else {}
 
     try:
-        response = requests.post(api_url, headers=headers, json={"inputs": inputs, "options": {"wait_for_model": True}}, timeout=10)
+        response = requests.post(api_url, headers=headers, json={"inputs": inputs, "options": {"wait_for_model": True}}, timeout=5)
         if response.status_code == 200:
             data = response.json()
-            # Si devuelve lista de matrices por token, promedia los vectores
             if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
-                if isinstance(data[0][0], list): # Matriz de tokens por frase
+                if isinstance(data[0][0], list):
                     sentence_embeddings = []
                     for sent in data:
-                        # Mean pooling
                         dim = len(sent[0])
                         avg_vec = [sum(sent[t][d] for t in range(len(sent))) / len(sent) for d in range(dim)]
                         sentence_embeddings.append(avg_vec)
                     return sentence_embeddings
-                else: # Vector directo por frase
+                else:
                     return data
     except Exception as exc:
         logger.warning("Fallo al obtener embedding semántico de Hugging Face API (%s). Usando fallback...", exc)
