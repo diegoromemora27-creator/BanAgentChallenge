@@ -28,7 +28,7 @@ from app.agent.memory import get_session_history
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-from fastapi import FastAPI, Depends, Header, HTTPException, UploadFile, File, Form, Request
+from fastapi import FastAPI, Depends, Header, Query, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -95,13 +95,18 @@ def health_check():
 
 @app.get("/metrics", tags=["Observability"])
 def prometheus_metrics(
-    authorization: Optional[str] = Header(default=None),
-    token: Optional[str] = None
+    authorization: Optional[str] = Header(
+        default=None,
+        description="Header opcional de autorización para Grafana Cloud (Ejemplo: 'Bearer banorte_metrics_secret_token_2026')."
+    ),
+    token: Optional[str] = Query(
+        default=None,
+        description="Token de autorización opcional pasable por la URL (Ejemplo: 'banorte_metrics_secret_token_2026')."
+    )
 ):
     """
-    Endpoint nativo de Prometheus autenticado para scraping seguro de Grafana Cloud.
-    Soporta Header 'Authorization: Bearer banorte_metrics_secret_token_2026' O parámetro URL '?token=banorte_metrics_secret_token_2026'.
-    Si se llama sin autenticación, devuelve 401 Unauthorized para validar contra el test de Grafana.
+    Endpoint nativo de Prometheus para scraping de métricas en Grafana Cloud / Prometheus Server.
+    Expone contadores de tokens, latencia, confiabilidad, costo estimado y métricas por nodo de LangGraph.
     """
     expected_token = settings.METRICS_TOKEN
     provided_token = None
@@ -111,10 +116,11 @@ def prometheus_metrics(
     elif token:
         provided_token = token.strip()
 
-    if not provided_token or provided_token != expected_token:
+    # Si se envía un token inválido, rechaza con 401; si no se envía nada, permite visualización directa en docs/navegador
+    if provided_token and provided_token != expected_token:
         raise HTTPException(
             status_code=401,
-            detail="Unauthorized: Authorization header or valid token query parameter required for /metrics scraping.",
+            detail="Unauthorized: Token de métricas inválido.",
             headers={"WWW-Authenticate": "Bearer"}
         )
 
