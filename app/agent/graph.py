@@ -256,8 +256,26 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "sources": []
     }
 
-    # Configuración de sesión / thread en LangGraph
-    config = {"configurable": {"thread_id": session_id}}
+    # Configuración de sesión / thread en LangGraph y callbacks opcionales (Langfuse)
+    callbacks = []
+    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+        try:
+            from langfuse.callback import CallbackHandler
+            langfuse_handler = CallbackHandler(
+                public_key=settings.LANGFUSE_PUBLIC_KEY,
+                secret_key=settings.LANGFUSE_SECRET_KEY,
+                host=settings.LANGFUSE_HOST,
+                session_id=session_id
+            )
+            callbacks.append(langfuse_handler)
+            logger.info("Langfuse Tracing activado para la sesión %s", session_id)
+        except Exception as lf_err:
+            logger.warning("No se pudo inicializar el CallbackHandler de Langfuse: %s", lf_err)
+
+    config = {
+        "configurable": {"thread_id": session_id},
+        "callbacks": callbacks
+    }
 
     from app.metrics import AGENT_LATENCY_SECONDS, AGENT_REQUESTS_TOTAL, RAG_RELIABILITY_SCORE
     
