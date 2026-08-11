@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     # Observabilidad Avanzada con Langfuse Cloud (Opcional)
     LANGFUSE_PUBLIC_KEY: str = Field(default="", description="Public Key para Langfuse Cloud Tracing")
     LANGFUSE_SECRET_KEY: str = Field(default="", description="Secret Key para Langfuse Cloud Tracing")
-    LANGFUSE_HOST: str = Field(default="https://cloud.langfuse.com", description="Host de Langfuse Cloud")
+    LANGFUSE_HOST: str = Field(default="https://us.cloud.langfuse.com", description="Host de Langfuse Cloud")
+    LANGFUSE_BASE_URL: str = Field(default="", description="Alias para Host de Langfuse Cloud")
 
     # Token de Seguridad para Protección del Endpoint /metrics en Grafana Cloud
     METRICS_TOKEN: str = Field(default="banorte_metrics_secret_token_2026", description="Token Bearer para autenticar Grafana Cloud scraper")

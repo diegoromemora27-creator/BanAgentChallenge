@@ -261,10 +261,11 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
         try:
             from langfuse.callback import CallbackHandler
+            host_url = settings.LANGFUSE_BASE_URL or settings.LANGFUSE_HOST or "https://us.cloud.langfuse.com"
             langfuse_handler = CallbackHandler(
                 public_key=settings.LANGFUSE_PUBLIC_KEY,
                 secret_key=settings.LANGFUSE_SECRET_KEY,
-                host=settings.LANGFUSE_HOST,
+                host=host_url,
                 session_id=session_id
             )
             callbacks.append(langfuse_handler)
