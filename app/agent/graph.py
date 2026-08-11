@@ -260,7 +260,12 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     callbacks = []
     if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
         try:
-            from langfuse.callback import CallbackHandler
+            # En v2/v3 de langfuse el callback de langchain está en langfuse.langchain
+            try:
+                from langfuse.langchain import CallbackHandler
+            except ImportError:
+                from langfuse.callback import CallbackHandler
+
             host_url = settings.LANGFUSE_BASE_URL or settings.LANGFUSE_HOST or "https://us.cloud.langfuse.com"
             langfuse_handler = CallbackHandler(
                 public_key=settings.LANGFUSE_PUBLIC_KEY,
@@ -321,34 +326,47 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
                 secret_key=settings.LANGFUSE_SECRET_KEY,
                 host=host_url
             )
-            trace = lf_client.trace(
-                name="CV_Agent_Workflow_Execution",
-                session_id=session_id,
-                input=message,
-                output=final_state.get("llm_response", ""),
-                metadata={
-                    "intent": final_state.get("intent", ""),
-                    "reliability_score": reliability_score,
-                    "estimated_cost_usd": estimated_cost_usd
-                }
-            )
-            # Span de Recuperación de Vectores (Qdrant RAG)
-            trace.span(
-                name="qdrant_vector_retrieval",
-                input=message,
-                output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
-            )
-            # Generación del LLM (Hugging Face / Groq)
-            trace.generation(
-                name="llm_grounded_generation",
-                model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
-                output=final_state.get("llm_response", ""),
-                usage={
-                    "prompt_tokens": usage.get("prompt_tokens", 250),
-                    "completion_tokens": usage.get("completion_tokens", 100),
-                    "total_tokens": total_tokens
-                }
-            )
+            
+            # Creación compatible con la versión v2 de Langfuse Python SDK
+            trace_obj = None
+            if hasattr(lf_client, "trace") and callable(getattr(lf_client, "trace")):
+                trace_obj = lf_client.trace(
+                    name="CV_Agent_Workflow_Execution",
+                    session_id=session_id,
+                    input=message,
+                    output=final_state.get("llm_response", ""),
+                    metadata={
+                        "intent": final_state.get("intent", ""),
+                        "reliability_score": reliability_score,
+                        "estimated_cost_usd": estimated_cost_usd
+                    }
+                )
+            elif hasattr(lf_client, "span"):
+                trace_obj = lf_client.span(
+                    name="CV_Agent_Workflow_Execution",
+                    input=message,
+                    output=final_state.get("llm_response", "")
+                )
+
+            if trace_obj:
+                if hasattr(trace_obj, "span"):
+                    trace_obj.span(
+                        name="qdrant_vector_retrieval",
+                        input=message,
+                        output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
+                    )
+                if hasattr(trace_obj, "generation"):
+                    trace_obj.generation(
+                        name="llm_grounded_generation",
+                        model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
+                        output=final_state.get("llm_response", ""),
+                        usage={
+                            "prompt_tokens": usage.get("prompt_tokens", 250),
+                            "completion_tokens": usage.get("completion_tokens", 100),
+                            "total_tokens": total_tokens
+                        }
+                    )
+            
             lf_client.flush()
             logger.info("Traza enriquecida de Langfuse SDK enviada con éxito a %s", host_url)
         except Exception as sdk_lf_err:
