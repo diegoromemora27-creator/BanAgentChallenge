@@ -5,7 +5,7 @@ Define el grafo de estados para el flujo RAG estricto con Guardrails.
 
 import os
 import logging
-from typing import Dict, Any, List, TypedDict
+from typing import Dict, Any, List, TypedDict, Optional
 from langgraph.graph import StateGraph, END
 
 from app.agent.prompts import SYSTEM_GROUNDING_PROMPT
