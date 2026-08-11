@@ -290,6 +290,15 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
             final_state = fallback_executor.invoke(initial_state, config=config)
             AGENT_REQUESTS_TOTAL.labels(status="fallback").inc()
 
+    # Forzar el envío síncrono de trazas a Langfuse Cloud
+    if callbacks:
+        try:
+            for cb in callbacks:
+                if hasattr(cb, "flush"):
+                    cb.flush()
+        except Exception as fl_err:
+            logger.warning("Error al realizar flush en Langfuse: %s", fl_err)
+
     # Cálculo de métricas avanzadas de RAG, confiabilidad y costo estimado
     context_chunks = final_state.get("retrieved_context", [])
     top_score = context_chunks[0]["score"] if context_chunks else 0.0
