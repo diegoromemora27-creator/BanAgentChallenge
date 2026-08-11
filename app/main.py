@@ -142,19 +142,28 @@ def chat_endpoint(request: Request, req: ChatRequest):
     Endpoint de conversación simplificado para clientes Web o Chat UI con Rate Limiting.
     """
     session_id = req.session_id or f"session_{uuid.uuid4().hex[:8]}"
-    logger.info("Procesando consulta en /chat para sesión %s", session_id)
+    logger.info("=== [NUEVA PETICIÓN EN /CHAT] ===")
+    logger.info("Sesión ID: %s | Mensaje recibido: '%s'", session_id, req.message)
 
     try:
         result = run_agent_workflow(message=req.message, session_id=session_id)
+        reply = result["reply"]
+        sources_count = len(result.get("sources", []))
+        metrics = result.get("metrics", {})
+        
+        logger.info("=== [RESPUESTA DE /CHAT COMPLETADA] ===")
+        logger.info("Sesión ID: %s | Longitud Respuesta: %d caracteres | Fuentes RAG: %d | Provider: %s", 
+                    session_id, len(reply), sources_count, metrics.get("provider", "N/A"))
+
         return ChatResponse(
-            reply=result["reply"],
+            reply=reply,
             sources=result.get("sources", []),
-            metrics=result.get("metrics", {})
+            metrics=metrics
         )
     except Exception as exc:
         import traceback
         err_trace = traceback.format_exc()
-        logger.error("Error procesando solicitud en /chat:\n%s", err_trace)
+        logger.error("=== [ERROR CRÍTICO EN /CHAT] ===\n%s", err_trace)
         raise HTTPException(status_code=500, detail=f"Error interno: {str(exc)}")
 
 
