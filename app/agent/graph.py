@@ -311,6 +311,49 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     total_tokens = usage.get("total_tokens", 350)
     estimated_cost_usd = round((total_tokens / 1000) * 0.00015, 6)
 
+    # Registrar Traza Enriquecida con Langfuse SDK Nativo (Coexistencia con LangGraph CallbackHandler)
+    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
+        try:
+            from langfuse import Langfuse
+            host_url = settings.LANGFUSE_BASE_URL or settings.LANGFUSE_HOST or "https://us.cloud.langfuse.com"
+            lf_client = Langfuse(
+                public_key=settings.LANGFUSE_PUBLIC_KEY,
+                secret_key=settings.LANGFUSE_SECRET_KEY,
+                host=host_url
+            )
+            trace = lf_client.trace(
+                name="CV_Agent_Workflow_Execution",
+                session_id=session_id,
+                input=message,
+                output=final_state.get("llm_response", ""),
+                metadata={
+                    "intent": final_state.get("intent", ""),
+                    "reliability_score": reliability_score,
+                    "estimated_cost_usd": estimated_cost_usd
+                }
+            )
+            # Span de Recuperación de Vectores (Qdrant RAG)
+            trace.span(
+                name="qdrant_vector_retrieval",
+                input=message,
+                output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
+            )
+            # Generación del LLM (Hugging Face / Groq)
+            trace.generation(
+                name="llm_grounded_generation",
+                model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
+                output=final_state.get("llm_response", ""),
+                usage={
+                    "prompt_tokens": usage.get("prompt_tokens", 250),
+                    "completion_tokens": usage.get("completion_tokens", 100),
+                    "total_tokens": total_tokens
+                }
+            )
+            lf_client.flush()
+            logger.info("Traza enriquecida de Langfuse SDK enviada con éxito a %s", host_url)
+        except Exception as sdk_lf_err:
+            logger.warning("No se pudo enviar la traza nativa de Langfuse SDK: %s", sdk_lf_err)
+
     return {
         "reply": final_state.get("llm_response", "No se pudo obtener respuesta del agente."),
         "sources": final_state.get("sources", []),
