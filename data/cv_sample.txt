@@ -1,31 +1,75 @@
-Juan Pérez
-AI Engineer Generativo & Backend Developer
-Ciudad de México, México
-Contacto Directo: juan.perez.ai@example.com | LinkedIn: https://www.linkedin.com/in/juanperez-ai
+DIEGO ROMERO MORA
+Senior IA Engineer
 
-RESUMEN PROFESIONAL
-Ingeniero en Inteligencia Artificial Generativa con más de 4 años de experiencia diseñando y desplegando sistemas RAG avanzados, microservicios en FastAPI y agentes conversacionales. Especializado en integración de modelos LLM con bases de datos vectoriales como Qdrant. Para contacto profesional o contrataciones, puedes escribirle directamente a juan.perez.ai@example.com o conectar a través de LinkedIn en https://www.linkedin.com/in/juanperez-ai.
+Mexico City, Mexico | TEL :5560438272 | diegoromemora27@gmail.com 
 
-EXPERIENCIA LABORAL
-AI Engineer Senior | Tech Solutions Inc. | 2024 - Presente
-- Lideré el desarrollo de un agente conversacional RAG que redujo el tiempo de atención en un 40%.
-- Diseñé pipelines de ingesta multi-fuente con FastAPI, Python, Qdrant y Docker.
-- Tecnologías: Python, FastAPI, Qdrant, Llama 3, Groq, Docker, LangGraph.
-- Logros: Optimización de latencia en inferencia a menos de 800ms.
 
-Desarrollador Backend | SoftCloud | 2022 - 2024
-- Construí arquitecturas de microservicios e integré proveedores de LLMs.
-- Tecnologías: Python, Docker, PostgreSQL, REST APIs.
+Strategic Senior AI Engineer with extensive experience in architecting agentic AI platforms, multi-agent orchestration systems, and production backend infrastructure. Recognized for technical versatility, rapid adoption of new technologies, and deep specialization in advanced AI frameworks and scalable cloud architectures. Proven track record in optimizing LLM workflows, reducing operating costs, and engineering reliable production systems to drive enterprise innovation.
 
-PROYECTOS DESTACADOS
-Sistema de Ingesta Inteligente de Documentos
-- Problema: Ineficiencia al procesar CVs no estructurados en formato PDF y TXT.
-- Solución: Pipeline automatizado con extracción LLM y almacenamiento en Qdrant.
-- Arquitectura: FastAPI + Sentence Transformers + Qdrant Cloud.
-- Resultado: Procesamiento de más de 10,000 documentos con 98% de precisión en estructuración.
 
-HABILIDADES TÉCNICAS
-- Lenguajes: Python, SQL
-- Frameworks & Libs: FastAPI, LangGraph, Pydantic, SentenceTransformers, PyPDF
-- Bases de Datos Vectoriales: Qdrant Cloud
-- Despliegue & DevOps: Docker, Hugging Face Spaces, Render, GitHub Actions
+CORE COMPETENCIES
+
+
+Agentic AI Systems | Multi-Agent Orchestration | LLM Optimization | Vector Databases & Embeddings | System Architecture and Scaling | Distributed Systems | ETL and Data Pipelines | AI Evaluation and Regression Testing | Cloud Infrastructure | Production Backend Engineering.
+
+
+Skills: Adaptability | Problem Solving | Technical Versatility | Continuous Learning | Strategic Thinking | Bilingual (EN-SP).
+
+
+Tools: 
+Python - Backend: Python, FastAPI, async programming, Pydantic, type hints, REST APIs, pytest.
+AI - Agents: MCP, FastMCP, LangGraph, LangChain, multi-agent systems, RAG, prompt engineering, function calling, AI evals.
+Testing: pytest, pytest-asyncio, DeepEval, TDD, Selenium, Cypress, Postman.
+Cloud - DevOps: Docker, Kubernetes, GitHub Actions, CI/CD, AWS, Azure.
+Data - Storage: PostgreSQL, SQL, MySQL, MongoDB, DynamoDB, SQLAlchemy.
+Automation - Integration: API integration, internal tools, n8n, Zapier.
+
+
+PROFESSIONAL EXPERIENCE
+
+SENIOR AI AUTOMATION ENGINEER | Teradata | Mexico City | Dec 2025 – July 2026
+Designed and maintained stateful AI workflows with LangGraph, Python, and FastAPI, improving routing reliability and reducing manual intervention by 30%. 
+Built secure MCP and FastMCP connectors in Python and Docker, enabling controlled access to internal systems and reducing latency by 40% across 10 integrations. 
+Developed multi-agent orchestration systems with context management, tool use, and vector databases, improving workflow completion speed by 20% and reducing manual escalation by 40%. 
+Optimized frontier model APIs through caching, rate limiting, and monitoring, reducing token usage, latency, and operating cost by 30%. 
+Migrated legacy AI agents to scalable Docker- and FastAPI-based services with GitHub Actions CI/CD, improving deployment consistency and supportability. 
+Implemented RAG and function-calling pipelines with embeddings, SQL, and vector databases to improve response quality and reduce hallucinations. 
+Built evaluation workflows with DeepEval, golden datasets, and regression checks to measure agent quality, consistency, and scope enforcement. 
+
+CLOUD QA - AI SOLUTIONS | Insulet | Mexico City | Mar 2025 – Dec 2025
+Diagnosed production issues in microservices by tracing logs, dependencies, and failure points across AWS services, reducing incident resolution time by 30%. 
+Investigated distributed failures using CloudWatch, X-Ray, and AWS CLI to improve service stability. 
+
+
+
+Designed and deployed AI-powered automation tools with LLaMA, GPT-4, and AWS Bedrock for onboarding, code review, and workflow tracking. 
+Led end-to-end implementation across prompt engineering, Docker deployment, FastAPI services, and integrations with n8n and Zapier, automating review flows and developer onboarding. 
+
+SOFTWARE ENGINEER II | Solera | Mexico City | Aug 2022 – Mar 2025
+Developed automated testing frameworks with Robot Framework, Selenium, Cypress, and Cucumber, increasing test coverage by 50%. 
+Designed and executed API test suites with Postman, RestAssured, and Swagger, reducing production bugs and integration errors by 20%. 
+Built ETL pipelines with Python, Pandas, and SQLAlchemy to extract and transform data from APIs and external sources. 
+Developed internal tools with React.js, Node.js, and Express.js, supporting delivery through Docker, Kubernetes, GitHub Actions, and Jenkins. 
+
+SOFTWARE ENGINEERING INTERN | CTIN Technology and Innovation Center | Mexico City | Mar 2021 – Aug 2021
+Developed RESTful APIs with Node.js and Express.js, including authentication, logging, and reliability improvements. Designed and maintained MySQL databases, optimized queries, and supported schema migrations with Knex.js and Sequelize. 
+Built responsive frontend interfaces with React.js and implemented state management using Redux and Context API. 
+Integrated third-party services such as Stripe and PayPal, improving secure external service communication. 
+
+
+ACADEMIC COLLABORATION
+
+LECTURER, APPLIED MATHEMATICS AND COMPUTING | UNAM | State of Mexico | Dec 2025 – Present
+Teach undergraduate courses in Web Development and Cloud Computing within the Applied Mathematics and Computing program, aligning instructional content with modern industry software engineering practices.
+Designed course materials for the Web Development and Cloud Computing topics, including hands-on labs and technical learning activities, enabling university groups to adopt modern methodologies and achieve high practical project completion rates. 
+Created and maintained a public course portfolio showcasing technical demonstrations, instructional content, and guided projects to facilitate continuous learning and increase best practice adoption in student final projects. 
+
+
+EDUCATION
+
+Master's Degree in Data Science. Technological University of the Mixteca (Remote).
+Bachelor’s Degree in Applied Mathematics and Computing. UNAM.
+
+Certifications: AWS Certified Cloud Practitioner | AWS Certified Solutions Architect – Associate | AWS re/Start Graduate | Google Associate Cloud Engineer  | Google Generative AI Leader | IBM Artificial Intelligence Fundamentals | Oracle Cloud Infrastructure 2025 Certified AI Foundations Associate | Oracle Cloud Infrastructure 2025 Certified Foundations Associate | Voxy Proficiency Achievement Certificate – High Intermedia.
+
+Selected Courses: Diploma in Database Administration. UNAM.

@@ -239,16 +239,22 @@ if settings.DATABASE_URL:
         from langgraph.checkpoint.postgres import PostgresSaver
         from psycopg_pool import ConnectionPool
         
-        logger.info("Conectando a PostgreSQL (Neon) para persistencia de Checkpoints...")
-        # autocommit=True es requerido por Neon/PostgreSQL para crear índices concurrentes durante checkpointer.setup()
+        db_url = settings.DATABASE_URL.strip()
+        # Asegurar sslmode=require para conexiones remotas a Supabase / Cloud Postgres si no viene especificado
+        if "sslmode" not in db_url and ("supabase" in db_url or "aws" in db_url or "cloud" in db_url):
+            delimiter = "&" if "?" in db_url else "?"
+            db_url += f"{delimiter}sslmode=require"
+
+        logger.info("Conectando a PostgreSQL (Supabase / PostgresSaver) para persistencia de Checkpoints...")
+        # autocommit=True es requerido por Supabase/PostgreSQL para crear tablas e índices durante checkpointer.setup()
         connection_pool = ConnectionPool(
-            conninfo=settings.DATABASE_URL,
+            conninfo=db_url,
             max_size=10,
-            kwargs={"connect_timeout": 5, "autocommit": True}
+            kwargs={"connect_timeout": 10, "autocommit": True}
         )
         checkpointer = PostgresSaver(connection_pool)
         checkpointer.setup()
-        logger.info("Checkpointer Postgres (Neon) configurado e inicializado correctamente.")
+        logger.info("Checkpointer Postgres (Supabase) configurado e inicializado correctamente.")
     except Exception as exc:
         logger.warning("No se pudo conectar a PostgreSQL (%s). Usando MemorySaver por defecto.", exc)
         checkpointer = MemorySaver()

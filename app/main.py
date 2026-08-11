@@ -56,6 +56,25 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def auto_ingest_default_cv():
+    """Ingesta automáticamente el CV de Diego Romero Mora (data/cv_sample.txt) si Qdrant está vacío."""
+    try:
+        from app.rag.retriever import qdrant_client, ensure_collection_exists
+        ensure_collection_exists()
+        info = qdrant_client.get_collection(collection_name=settings.QDRANT_COLLECTION_NAME)
+        if info.points_count == 0:
+            logger.info("Qdrant está vacío. Auto-ingestionando CV de Diego Romero Mora desde data/cv_sample.txt...")
+            with open("data/cv_sample.txt", "r", encoding="utf-8") as f:
+                pasted_text = f.read()
+            ingest_cv(pasted_text=pasted_text)
+            logger.info("CV de Diego Romero Mora indexado exitosamente en Qdrant.")
+        else:
+            logger.info("Qdrant ya contiene %d puntos indexados para el CV.", info.points_count)
+    except Exception as exc:
+        logger.warning("No se pudo verificar o autoingestar el CV en startup: %s", exc)
+
+
 def verify_api_key(
     authorization: Optional[str] = Header(default=None),
     x_api_key: Optional[str] = Header(default=None, alias="X-API-Key")
