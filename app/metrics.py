@@ -3,7 +3,24 @@ Módulo de Métricas e Instrumentación nativa para Prometheus / OpenMetrics.
 Registra Histogramas, Contadores y Gauges de LangGraph, RAG y Costos Financieros.
 """
 
-from prometheus_client import Counter, Histogram, Gauge
+try:
+    from prometheus_client import Counter, Histogram, Gauge
+except ImportError:
+    from contextlib import contextmanager
+    
+    @contextmanager
+    def _dummy_cm():
+        yield
+
+    class DummyMetric:
+        def __init__(self, *args, **kwargs): pass
+        def labels(self, *args, **kwargs): return self
+        def observe(self, *args, **kwargs): pass
+        def inc(self, *args, **kwargs): pass
+        def set(self, *args, **kwargs): pass
+        def time(self, *args, **kwargs): return _dummy_cm()
+
+    Counter = Histogram = Gauge = DummyMetric
 
 # 1. Métricas de Rendimiento y Latencia (Histograms)
 AGENT_LATENCY_SECONDS = Histogram(

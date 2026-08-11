@@ -93,7 +93,7 @@ class CVUploadResponse(BaseModel):
 class ResponseInputItem(BaseModel):
     """Item dentro del arreglo input de Open Responses."""
     role: str = Field("user", description="Rol del emisor: user | assistant | system")
-    content: str = Field(..., description="Texto del contenido")
+    content: Any = Field(..., description="Texto del contenido o lista de bloques (texto, adjuntos de archivos/imágenes)")
 
 
 class ResponsesRequest(BaseModel):
@@ -132,3 +132,31 @@ class OpenResponsesPayload(BaseModel):
     output: List[OutputMessage]
     output_text: str
     usage: Dict[str, int] = Field(default_factory=dict, description="Uso de tokens en el spec de Open Responses")
+
+
+# ==========================================
+# 4. Esquema para Tarjeta de Agente A2A (.well-known/agent-card.json)
+# ==========================================
+
+class AgentCapabilities(BaseModel):
+    open_responses: bool = True
+    streaming: bool = False
+    file_input: bool = True
+    image_input: bool = False
+
+
+class AgentAuthentication(BaseModel):
+    type: str = "bearer"
+    header: str = "Authorization"
+    description: str = "Se envía como Authorization: Bearer <API_KEY>"
+
+
+class AgentCardSchema(BaseModel):
+    name: str
+    description: str
+    version: str
+    responses_url: str
+    authentication: AgentAuthentication
+    capabilities: AgentCapabilities
+    starter_prompts: List[str]
+

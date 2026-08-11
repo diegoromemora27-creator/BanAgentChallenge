@@ -34,6 +34,7 @@ class AgentState(TypedDict):
     retrieved_context: List[Dict[str, Any]]
     llm_response: str
     sources: List[str]
+    system_instructions: str
 
 
 # ==========================================
@@ -148,6 +149,9 @@ def node_generate_response(state: AgentState) -> AgentState:
                 context_str=context_str,
                 chat_history_str=chat_history_str
             )
+            extra_instructions = state.get("system_instructions", "")
+            if extra_instructions:
+                system_prompt += f"\n\nInstrucciones adicionales del sistema:\n{extra_instructions}"
 
             input_items = list(history)
             input_items.append({"role": "user", "content": state["user_message"]})
@@ -299,9 +303,9 @@ else:
 agent_executor = workflow.compile(checkpointer=checkpointer)
 
 
-def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, Any]:
+def run_agent_workflow(message: str, session_id: str, system_instructions: Optional[str] = None) -> Dict[str, Any]:
     """
-    Función de entrada principal para invocar el flujo agéntico completo.
+    Ejecuta el Grafo de LangGraph para procesar un mensaje de usuario.
     """
     logger.info("=== INICIANDO FLUJO AGÉNTICO (Session: %s) ===", session_id)
     initial_state: AgentState = {
@@ -312,7 +316,8 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "guardrail_error": "",
         "retrieved_context": [],
         "llm_response": "",
-        "sources": []
+        "sources": [],
+        "system_instructions": system_instructions or ""
     }
 
     # Configuración combinada de LangGraph y metadatos de sesión para Langfuse

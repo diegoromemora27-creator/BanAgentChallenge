@@ -21,7 +21,10 @@ from app.models.schemas import (
     ResponsesRequest,
     OpenResponsesPayload,
     OutputMessage,
-    OutputContentText
+    OutputContentText,
+    AgentCardSchema,
+    AgentAuthentication,
+    AgentCapabilities
 )
 from app.agent.graph import run_agent_workflow
 from app.rag.ingest import ingest_cv
@@ -88,8 +91,42 @@ def root():
     return {
         "message": f"Bienvenido a {settings.PROJECT_NAME}",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
+        "agent_card": "/.well-known/agent-card.json"
     }
+
+
+@app.get("/.well-known/agent-card.json", response_model=AgentCardSchema, tags=["Agent Metadata (A2A)"])
+def get_agent_card():
+    """
+    Endpoint público que expone el manifiesto de la tarjeta de agente A2A.
+    Usado por plataformas como Parley o catálogos A2A para autocompletar formularios y descubrir el agente.
+    """
+    return AgentCardSchema(
+        name="Agente Conversacional CV · Banorte Challenge",
+        description="Agente RAG estricto para responder sobre la experiencia laboral, habilidades, proyectos y perfil profesional del candidato.",
+        version=settings.VERSION,
+        responses_url="/v1/responses",
+        authentication=AgentAuthentication(
+            type="bearer",
+            header="Authorization",
+            description="Requiere API Key enviada en el header Authorization: Bearer <API_KEY>"
+        ),
+        capabilities=AgentCapabilities(
+            open_responses=True,
+            streaming=False,
+            file_input=True,
+            image_input=False
+        ),
+        starter_prompts=[
+            "¿Cuál es el perfil profesional y experiencia del candidato?",
+            "¿Qué proyectos de IA y RAG ha desarrollado?",
+            "¿Cuáles son sus principales habilidades y tecnologías dominadas?",
+            "¿Tiene experiencia con FastAPI, LangChain y bases de datos vectoriales?",
+            "¿Qué logros destacan en su trayectoria laboral?",
+            "¿Cómo puedo contactar al candidato?"
+        ]
+    )
 
 
 @app.get("/health", tags=["Health"])
@@ -190,12 +227,34 @@ def chat_endpoint(request: Request, req: ChatRequest):
         raise HTTPException(status_code=500, detail=f"Error interno: {str(exc)}")
 
 
+def _extract_text_from_content(content: Any) -> str:
+    """Extrae texto de manera segura desde content (string, lista de dicts o estructuras multimediales)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                if item.get("type") in ["input_text", "text"] and "text" in item:
+                    parts.append(str(item["text"]))
+                elif "text" in item:
+                    parts.append(str(item["text"]))
+                elif item.get("type") in ["input_file", "file"]:
+                    filename = item.get("file_name") or item.get("name") or "adjunto"
+                    parts.append(f"[Archivo adjunto recibido: {filename}]")
+        return " ".join(parts) if parts else str(content)
+    return str(content)
+
+
 @app.post("/v1/responses", response_model=OpenResponsesPayload, dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
+@app.post("/responses", response_model=OpenResponsesPayload, dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
 @limiter.limit("60/minute")
 def create_response(request: Request, req: ResponsesRequest):
     """
     Endpoint interoperable compatible con la especificación abierta Open Responses (openresponses.org).
-    Mapea nombres de modelo arbitrarios ("gpt-4", etc.) a cv-agent-v1 y maneja stream=True según la especificación.
+    Soporta rutas /v1/responses y /responses, mapea modelos arbitrarios a cv-agent-v1 y procesa entradas complejas/adjuntos.
     """
     if req.stream:
         # El spec de Open Responses indica rechazar solicitudes de streaming si el servidor solo opera en sync
@@ -210,10 +269,18 @@ def create_response(request: Request, req: ResponsesRequest):
     if not req.input:
         raise HTTPException(status_code=400, detail="El parámetro 'input' no puede estar vacío.")
 
-    last_user_message = req.input[-1].content
+    last_user_message_raw = req.input[-1].content
+    last_user_message = _extract_text_from_content(last_user_message_raw)
+
+    if not last_user_message.strip():
+        last_user_message = "Hola"
 
     try:
-        result = run_agent_workflow(message=last_user_message, session_id=session_id)
+        result = run_agent_workflow(
+            message=last_user_message,
+            session_id=session_id,
+            system_instructions=req.instructions
+        )
         reply_text = result["reply"]
         metrics = result.get("metrics", {})
 
@@ -233,7 +300,7 @@ def create_response(request: Request, req: ResponsesRequest):
         return response_payload
 
     except Exception as exc:
-        logger.error("Error en endpoint Open Responses /v1/responses: %s", exc)
+        logger.error("Error en endpoint Open Responses /responses: %s", exc)
         raise HTTPException(status_code=500, detail="Error interno en el servidor Open Responses.")
 
 
