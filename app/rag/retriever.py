@@ -19,14 +19,38 @@ hf_embedding_client = OpenAI(
     base_url="https://router.huggingface.co/v1"
 )
 
+import requests
+
 def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
-    Genera vectores de embeddings ligeros y deterministas usando Hugging Face o hashing.
-    100% libre de dependencias de OpenAI API Key.
+    Genera vectores de embeddings semánticos reales consumiendo la API gratuita de Hugging Face.
+    Utiliza el modelo oficial 'sentence-transformers/all-MiniLM-L6-v2' (dimensión 384).
+    Consume 0 MB de RAM local.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
-    
-    # Generación determinista de vectores ligeros por hashing de texto (ultrarrápido, 0 RAM, 0 dependencias extra)
+    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
+    headers = {"Authorization": f"Bearer {settings.HF_TOKEN}"} if settings.HF_TOKEN else {}
+
+    try:
+        response = requests.post(api_url, headers=headers, json={"inputs": inputs, "options": {"wait_for_model": True}}, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            # Si devuelve lista de matrices por token, promedia los vectores
+            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                if isinstance(data[0][0], list): # Matriz de tokens por frase
+                    sentence_embeddings = []
+                    for sent in data:
+                        # Mean pooling
+                        dim = len(sent[0])
+                        avg_vec = [sum(sent[t][d] for t in range(len(sent))) / len(sent) for d in range(dim)]
+                        sentence_embeddings.append(avg_vec)
+                    return sentence_embeddings
+                else: # Vector directo por frase
+                    return data
+    except Exception as exc:
+        logger.warning("Fallo al obtener embedding semántico de Hugging Face API (%s). Usando fallback...", exc)
+
+    # Fallback liviano en caso de desconexión momentánea de HF
     import hashlib
     vectors = []
     for text in inputs:
@@ -117,8 +141,7 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) 
                 collection_name=settings.QDRANT_COLLECTION_NAME,
                 query=query_vector,
                 query_filter=query_filter,
-                limit=top_k,
-                score_threshold=settings.SCORE_THRESHOLD,
+                limit=top_k
             )
             results = response.points
         else:
@@ -126,8 +149,7 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) 
                 collection_name=settings.QDRANT_COLLECTION_NAME,
                 query_vector=query_vector,
                 query_filter=query_filter,
-                limit=top_k,
-                score_threshold=settings.SCORE_THRESHOLD,
+                limit=top_k
             )
 
         extracted_context = []
