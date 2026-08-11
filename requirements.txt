@@ -13,4 +13,4 @@ python-multipart>=0.0.9
 slowapi>=0.1.9
 gradio>=4.0.0
 prometheus-client>=0.20.0
-langfuse>=2.0.0
+langfuse>=3.0.0

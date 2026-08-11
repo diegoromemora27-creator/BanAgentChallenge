@@ -241,23 +241,32 @@ workflow.add_edge("generate_response", END)
 _langfuse_handler = None
 if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
     try:
+        host_url = (
+            settings.LANGFUSE_BASE_URL.strip()
+            or settings.LANGFUSE_HOST.strip()
+            or "https://us.cloud.langfuse.com"
+        )
         try:
-            from langfuse.callback import CallbackHandler
+            from langfuse.langchain import CallbackHandler
+            _langfuse_handler = CallbackHandler(
+                public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
+                secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
+                host=host_url
+            )
+            logger.info("CallbackHandler de Langfuse (v3 langchain) inicializado exitosamente.")
         except ModuleNotFoundError:
             try:
-                from langfuse.langchain import CallbackHandler
-            except ModuleNotFoundError:
-                from langfuse import CallbackHandler
-
-        host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
-        _langfuse_handler = CallbackHandler(
-            public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
-            secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
-            host=host_url
-        )
-        logger.info("Langfuse CallbackHandler Singleton inicializado con éxito para host: %s", host_url)
-    except Exception as lf_init_err:
-        logger.warning("No se pudo inicializar el CallbackHandler global de Langfuse: %s", lf_init_err)
+                from langfuse.callback import CallbackHandler
+                _langfuse_handler = CallbackHandler(
+                    public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
+                    secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
+                    host=host_url
+                )
+                logger.info("CallbackHandler de Langfuse inicializado usando fallback v2.")
+            except Exception as e:
+                logger.error(f"No se pudo inicializar Langfuse (Error de dependencias): {e}")
+    except Exception as e:
+        logger.error(f"Error inesperado al inicializar Langfuse: {e}")
 
 # Compilación del Grafo Executable con el Checkpointer configurado
 agent_executor = workflow.compile(checkpointer=checkpointer)
