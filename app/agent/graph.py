@@ -237,14 +237,20 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     # Configuración de sesión / thread en LangGraph
     config = {"configurable": {"thread_id": session_id}}
 
-    final_state = agent_executor.invoke(initial_state, config=config)
+    try:
+        final_state = agent_executor.invoke(initial_state, config=config)
+    except Exception as exec_err:
+        logger.warning("Error ejecutando agente con checkpointer persistente (%s). Reintentando con ejecutor efímero...", exec_err)
+        # Fallback a compilador en memoria libre sin PostgreSQL
+        fallback_executor = workflow.compile(checkpointer=MemorySaver())
+        final_state = fallback_executor.invoke(initial_state, config=config)
 
     return {
-        "reply": final_state["llm_response"],
+        "reply": final_state.get("llm_response", "No se pudo obtener respuesta del agente."),
         "sources": final_state.get("sources", []),
         "metrics": {
             "latency_ms": final_state.get("latency_ms", 0),
-            "provider": final_state.get("provider", "Hugging Face"),
+            "provider": final_state.get("provider", "Groq"),
             "usage": final_state.get("usage", {})
         }
     }

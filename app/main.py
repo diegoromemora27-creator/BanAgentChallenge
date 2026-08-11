@@ -110,8 +110,10 @@ def chat_endpoint(request: Request, req: ChatRequest):
             metrics=result.get("metrics", {})
         )
     except Exception as exc:
-        logger.error("Error procesando solicitud en /chat: %s", exc)
-        raise HTTPException(status_code=500, detail="Error interno al procesar la respuesta del agente.")
+        import traceback
+        err_trace = traceback.format_exc()
+        logger.error("Error procesando solicitud en /chat:\n%s", err_trace)
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(exc)}")
 
 
 @app.post("/v1/responses", response_model=OpenResponsesPayload, tags=["Open Responses API Standard"])
