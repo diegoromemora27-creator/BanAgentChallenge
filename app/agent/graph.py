@@ -234,6 +234,9 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         "sources": []
     }
 
+    # Configuración de sesión / thread en LangGraph
+    config = {"configurable": {"thread_id": session_id}}
+
     try:
         final_state = agent_executor.invoke(initial_state, config=config)
     except Exception as exec_err:
