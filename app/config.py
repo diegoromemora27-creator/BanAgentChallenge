@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Persistencia Externa con Supabase PostgreSQL (Checkpointer)
     DATABASE_URL: str = Field(default="", description="URI de conexión a Supabase PostgreSQL para persistencia de estado")
     
+    # Token de Seguridad para Protección del Endpoint /metrics en Grafana Cloud
+    METRICS_TOKEN: str = Field(default="banorte_metrics_secret_token_2026", description="Token Bearer para autenticar Grafana Cloud scraper")
+    
     # RAG Settings (Embeddings vía API sin carga local en RAM)
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_VECTOR_SIZE: int = 384

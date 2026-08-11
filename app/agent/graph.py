@@ -41,131 +41,153 @@ class AgentState(TypedDict):
 
 def node_input_guardrails(state: AgentState) -> AgentState:
     """Nodo 1: Validación de Guardrails de entrada."""
-    is_valid, err_msg = validate_input_guardrails(state["user_message"])
-    state["is_valid_input"] = is_valid
-    state["guardrail_error"] = err_msg
+    from app.metrics import NODE_EXECUTION_DURATION_SECONDS, NODE_ERRORS_TOTAL
+    with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="guardrails_input").time():
+        try:
+            is_valid, err_msg = validate_input_guardrails(state["user_message"])
+            state["is_valid_input"] = is_valid
+            state["guardrail_error"] = err_msg
+        except Exception:
+            NODE_ERRORS_TOTAL.labels(node_name="guardrails_input").inc()
+            raise
     return state
 
 
 def node_classify_intent(state: AgentState) -> AgentState:
     """Nodo 2: Clasificación de intención."""
-    if not state["is_valid_input"]:
-        return state
-
-    intent = classify_user_intent(state["user_message"])
-    state["intent"] = intent
+    from app.metrics import NODE_EXECUTION_DURATION_SECONDS, NODE_ERRORS_TOTAL
+    with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="classify_intent").time():
+        try:
+            if not state["is_valid_input"]:
+                return state
+            intent = classify_user_intent(state["user_message"])
+            state["intent"] = intent
+        except Exception:
+            NODE_ERRORS_TOTAL.labels(node_name="classify_intent").inc()
+            raise
     return state
 
 
 def node_retrieve_context(state: AgentState) -> AgentState:
     """Nodo 3: Tool / Recuperación de contexto desde Qdrant Cloud."""
-    intent = state.get("intent", "CV_QUESTION")
-    
-    if intent == "OUT_OF_BOUNDS":
-        state["retrieved_context"] = []
-        return state
+    from app.metrics import NODE_EXECUTION_DURATION_SECONDS, RETRIEVAL_LATENCY_SECONDS, TOOL_INVOCATIONS_TOTAL, RAG_RETRIEVED_DOCUMENTS_COUNT, NODE_ERRORS_TOTAL
+    with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="retrieve_context").time():
+        try:
+            intent = state.get("intent", "CV_QUESTION")
+            if intent == "OUT_OF_BOUNDS":
+                state["retrieved_context"] = []
+                RAG_RETRIEVED_DOCUMENTS_COUNT.set(0)
+                return state
 
-    if intent == "GREETING_OR_META":
-        # Para saludos se recupera solo el perfil
-        results = retrieve_cv_context(query=state["user_message"], top_k=2, tipo="perfil")
-    else:
-        results = retrieve_cv_context(query=state["user_message"], top_k=4)
+            TOOL_INVOCATIONS_TOTAL.labels(tool_name="qdrant_vector_search").inc()
+            
+            with RETRIEVAL_LATENCY_SECONDS.time():
+                if intent == "GREETING_OR_META":
+                    results = retrieve_cv_context(query=state["user_message"], top_k=2, tipo="perfil")
+                else:
+                    results = retrieve_cv_context(query=state["user_message"], top_k=4)
 
-    state["retrieved_context"] = results
-    state["sources"] = [r["texto"] for r in results]
+            state["retrieved_context"] = results
+            state["sources"] = [r["texto"] for r in results]
+            RAG_RETRIEVED_DOCUMENTS_COUNT.set(len(results))
+        except Exception:
+            NODE_ERRORS_TOTAL.labels(node_name="retrieve_context").inc()
+            raise
     return state
 
 
 def node_generate_response(state: AgentState) -> AgentState:
     """Nodo 4: Generación con LLM fundamentado en el contexto (Grounding)."""
-    # Si hubo error de guardrail de entrada
-    if not state["is_valid_input"]:
-        state["llm_response"] = state["guardrail_error"]
-        return state
+    from app.metrics import NODE_EXECUTION_DURATION_SECONDS, LLM_TOKENS_TOTAL, LLM_COST_ESTIMATED_TOTAL, NODE_ERRORS_TOTAL
+    with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="generate_response").time():
+        try:
+            if not state["is_valid_input"]:
+                state["llm_response"] = state["guardrail_error"]
+                return state
 
-    intent = state.get("intent", "CV_QUESTION")
+            intent = state.get("intent", "CV_QUESTION")
+            if intent == "OUT_OF_BOUNDS":
+                state["llm_response"] = "Como agente conversacional enfocado en el perfil profesional del candidato, solo estoy capacitado para responder preguntas sobre su experiencia laboral, proyectos, habilidades e historia profesional."
+                return state
 
-    if intent == "OUT_OF_BOUNDS":
-        state["llm_response"] = "Como agente conversacional enfocado en el perfil profesional del candidato, solo estoy capacitado para responder preguntas sobre su experiencia laboral, proyectos, habilidades e historia profesional."
-        return state
+            context_chunks = state.get("retrieved_context", [])
+            if not context_chunks:
+                context_str = "No se encontraron datos ni evidencias en el CV para la consulta realizada."
+            else:
+                context_str = "\n---\n".join([c["texto"] for c in context_chunks])
 
-    # Construcción de la cadena de contexto
-    context_chunks = state.get("retrieved_context", [])
-    if not context_chunks:
-        context_str = "No se encontraron datos ni evidencias en el CV para la consulta realizada."
-    else:
-        context_str = "\n---\n".join([c["texto"] for c in context_chunks])
+            nombre_candidato = "el Candidato"
+            system_prompt = SYSTEM_GROUNDING_PROMPT.format(
+                nombre_candidato=nombre_candidato,
+                context_str=context_str
+            )
 
-    nombre_candidato = "el Candidato"
-    system_prompt = SYSTEM_GROUNDING_PROMPT.format(
-        nombre_candidato=nombre_candidato,
-        context_str=context_str
-    )
+            history = get_session_history(state["session_id"])
+            input_items = list(history)
+            input_items.append({"role": "user", "content": state["user_message"]})
 
-    # Carga de memoria histórica
-    history = get_session_history(state["session_id"])
-    input_items = list(history)
-    input_items.append({"role": "user", "content": state["user_message"]})
+            import time
+            from app.logging_config import log_interaction_structured
 
-    import time
-    from app.logging_config import log_interaction_structured
+            start_time = time.time()
 
-    start_time = time.time()
+            llm_out = generate_llm_response(
+                system_prompt=system_prompt,
+                input_items=input_items,
+                temperature=0.2,
+                max_tokens=600
+            )
 
-    llm_out = generate_llm_response(
-        system_prompt=system_prompt,
-        input_items=input_items,
-        temperature=0.2,
-        max_tokens=600
-    )
+            latency_ms = (time.time() - start_time) * 1000
+            reply_text = llm_out.get("text", "")
+            provider_used = llm_out.get("provider", "Unknown")
+            
+            raw_resp = llm_out.get("raw")
+            usage_info = {}
+            if raw_resp and hasattr(raw_resp, "usage") and raw_resp.usage:
+                p_tok = getattr(raw_resp.usage, "prompt_tokens", 0)
+                c_tok = getattr(raw_resp.usage, "completion_tokens", 0)
+                t_tok = getattr(raw_resp.usage, "total_tokens", 0)
+                usage_info = {"prompt_tokens": p_tok, "completion_tokens": c_tok, "total_tokens": t_tok}
+                
+                # Actualiza contadores Prometheus de tokens y costos
+                LLM_TOKENS_TOTAL.labels(type="prompt", provider=provider_used).inc(p_tok)
+                LLM_TOKENS_TOTAL.labels(type="completion", provider=provider_used).inc(c_tok)
+                LLM_COST_ESTIMATED_TOTAL.labels(provider=provider_used).inc((t_tok / 1000) * 0.00015)
 
-    latency_ms = (time.time() - start_time) * 1000
-    reply_text = llm_out.get("text", "")
-    provider_used = llm_out.get("provider", "Unknown")
-    
-    # Extrae métricas de tokens si las devuelve el proveedor
-    raw_resp = llm_out.get("raw")
-    usage_info = {}
-    if raw_resp and hasattr(raw_resp, "usage") and raw_resp.usage:
-        usage_info = {
-            "prompt_tokens": getattr(raw_resp.usage, "prompt_tokens", 0),
-            "completion_tokens": getattr(raw_resp.usage, "completion_tokens", 0),
-            "total_tokens": getattr(raw_resp.usage, "total_tokens", 0)
-        }
+            try:
+                if not validate_output_guardrails(reply_text, context_chunks):
+                    reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
+            except Exception as g_err:
+                logger.warning("Error durante la validación de guardrails de salida: %s", g_err)
 
-    # Guardrail de salida seguro
-    try:
-        if not validate_output_guardrails(reply_text, context_chunks):
-            reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
-    except Exception as g_err:
-        logger.warning("Error durante la validación de guardrails de salida: %s", g_err)
+            state["llm_response"] = reply_text
+            state["latency_ms"] = round(latency_ms, 2)
+            state["provider"] = provider_used
+            state["usage"] = usage_info
 
-    state["llm_response"] = reply_text
-    state["latency_ms"] = round(latency_ms, 2)
-    state["provider"] = provider_used
-    state["usage"] = usage_info
+            try:
+                log_interaction_structured(
+                    session_id=state["session_id"],
+                    query=state["user_message"],
+                    retrieved_chunks=context_chunks,
+                    response_text=reply_text,
+                    latency_ms=latency_ms,
+                    provider_used=provider_used,
+                    usage_info=usage_info
+                )
+            except Exception:
+                pass
 
-    # Registro estructurado del evento de observabilidad
-    try:
-        log_interaction_structured(
-            session_id=state["session_id"],
-            query=state["user_message"],
-            retrieved_chunks=context_chunks,
-            response_text=reply_text,
-            latency_ms=latency_ms,
-            provider_used=provider_used,
-            usage_info=usage_info
-        )
-    except Exception:
-        pass
+            try:
+                add_message_to_session(state["session_id"], "user", state["user_message"])
+                add_message_to_session(state["session_id"], "assistant", reply_text)
+            except Exception as mem_err:
+                logger.warning("No se pudo guardar la sesión en memoria/DB: %s", mem_err)
 
-    # Guardar en memoria de sesión con fallback seguro
-    try:
-        add_message_to_session(state["session_id"], "user", state["user_message"])
-        add_message_to_session(state["session_id"], "assistant", reply_text)
-    except Exception as mem_err:
-        logger.warning("No se pudo guardar la sesión en memoria/DB: %s", mem_err)
-
+        except Exception:
+            NODE_ERRORS_TOTAL.labels(node_name="generate_response").inc()
+            raise
     return state
 
 
@@ -237,24 +259,26 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     # Configuración de sesión / thread en LangGraph
     config = {"configurable": {"thread_id": session_id}}
 
-    try:
-        final_state = agent_executor.invoke(initial_state, config=config)
-    except Exception as exec_err:
-        logger.warning("Error ejecutando agente con checkpointer persistente (%s). Reintentando con ejecutor efímero...", exec_err)
-        # Fallback a compilador en memoria libre sin PostgreSQL
-        fallback_executor = workflow.compile(checkpointer=MemorySaver())
-        final_state = fallback_executor.invoke(initial_state, config=config)
+    from app.metrics import AGENT_LATENCY_SECONDS, AGENT_REQUESTS_TOTAL, RAG_RELIABILITY_SCORE
+    
+    with AGENT_LATENCY_SECONDS.time():
+        try:
+            final_state = agent_executor.invoke(initial_state, config=config)
+            AGENT_REQUESTS_TOTAL.labels(status="success").inc()
+        except Exception as exec_err:
+            logger.warning("Error ejecutando agente con checkpointer persistente (%s). Reintentando con ejecutor efímero...", exec_err)
+            fallback_executor = workflow.compile(checkpointer=MemorySaver())
+            final_state = fallback_executor.invoke(initial_state, config=config)
+            AGENT_REQUESTS_TOTAL.labels(status="fallback").inc()
 
     # Cálculo de métricas avanzadas de RAG, confiabilidad y costo estimado
     context_chunks = final_state.get("retrieved_context", [])
     top_score = context_chunks[0]["score"] if context_chunks else 0.0
     n_chunks = len(context_chunks)
     
-    # Estimación de Confiabilidad / Grounding Score (0.0 a 1.0)
-    # Basado en la relevancia semántica de Qdrant y la presencia de contexto
     reliability_score = round(min(1.0, top_score if top_score > 0 else (0.85 if n_chunks > 0 else 0.40)), 2)
+    RAG_RELIABILITY_SCORE.set(reliability_score)
 
-    # Estimación de costo en USD ($0.00015 por 1k tokens en Llama 3.1 8B / 70B en HF & Groq)
     usage = final_state.get("usage", {})
     total_tokens = usage.get("total_tokens", 350)
     estimated_cost_usd = round((total_tokens / 1000) * 0.00015, 6)

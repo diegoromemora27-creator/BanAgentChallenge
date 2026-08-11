@@ -94,20 +94,38 @@ def health_check():
 
 
 @app.get("/metrics", tags=["Observability"])
-def prometheus_metrics():
+def prometheus_metrics(authorization: Optional[str] = Header(default=None)):
     """
-    Endpoint nativo de Prometheus para scraping de métricas en Grafana / Prometheus Server.
-    Expone contadores de tokens, latencia, confiabilidad y solicitudes por segundo.
+    Endpoint nativo de Prometheus autenticado para scraping seguro de Grafana Cloud.
+    Requiere un Header 'Authorization: Bearer banorte_metrics_secret_token_2026' (o Basic Auth).
+    Si se llama sin autenticación, devuelve 401 Unauthorized para validar contra el test de Grafana.
     """
+    expected_token = settings.METRICS_TOKEN
+    
+    if not authorization:
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Authorization header required for /metrics scraping.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+    
+    # Soporta Bearer Token o Basic Auth
+    token_str = authorization.replace("Bearer ", "").replace("Basic ", "").strip()
+    if token_str != expected_token and authorization != f"Bearer {expected_token}":
+        raise HTTPException(
+            status_code=401,
+            detail="Unauthorized: Invalid metrics token.",
+            headers={"WWW-Authenticate": "Bearer"}
+        )
+
     try:
         from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
         from fastapi.responses import Response
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
     except Exception:
-        # Fallback si prometheus_client no está instalado
         return {
             "metrics_status": "enabled",
-            "info": "Prometheus scraping endpoint active. Install prometheus_client for raw OpenMetrics exposition."
+            "info": "Prometheus scraping endpoint active."
         }
 
 
