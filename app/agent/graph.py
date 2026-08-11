@@ -133,9 +133,12 @@ def node_generate_response(state: AgentState) -> AgentState:
             "total_tokens": getattr(raw_resp.usage, "total_tokens", 0)
         }
 
-    # Guardrail de salida
-    if not validate_output_guardrails(reply_text, context_chunks):
-        reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
+    # Guardrail de salida seguro
+    try:
+        if not validate_output_guardrails(reply_text, context_chunks):
+            reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
+    except Exception as g_err:
+        logger.warning("Error durante la validación de guardrails de salida: %s", g_err)
 
     state["llm_response"] = reply_text
     state["latency_ms"] = round(latency_ms, 2)
@@ -143,19 +146,25 @@ def node_generate_response(state: AgentState) -> AgentState:
     state["usage"] = usage_info
 
     # Registro estructurado del evento de observabilidad
-    log_interaction_structured(
-        session_id=state["session_id"],
-        query=state["user_message"],
-        retrieved_chunks=context_chunks,
-        response_text=reply_text,
-        latency_ms=latency_ms,
-        provider_used=provider_used,
-        usage_info=usage_info
-    )
+    try:
+        log_interaction_structured(
+            session_id=state["session_id"],
+            query=state["user_message"],
+            retrieved_chunks=context_chunks,
+            response_text=reply_text,
+            latency_ms=latency_ms,
+            provider_used=provider_used,
+            usage_info=usage_info
+        )
+    except Exception:
+        pass
 
-    # Guardar en memoria
-    add_message_to_session(state["session_id"], "user", state["user_message"])
-    add_message_to_session(state["session_id"], "assistant", reply_text)
+    # Guardar en memoria de sesión con fallback seguro
+    try:
+        add_message_to_session(state["session_id"], "user", state["user_message"])
+        add_message_to_session(state["session_id"], "assistant", reply_text)
+    except Exception as mem_err:
+        logger.warning("No se pudo guardar la sesión en memoria/DB: %s", mem_err)
 
     return state
 
