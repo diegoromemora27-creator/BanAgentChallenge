@@ -89,13 +89,22 @@ def node_retrieve_context(state: AgentState) -> AgentState:
                 return state
 
             TOOL_INVOCATIONS_TOTAL.labels(tool_name="qdrant_vector_search").inc()
-            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Consultando Qdrant Vector DB para intención '%s'...", intent)
+            
+            # Expansión conversacional multi-turno: incluye últimos turnos para resolver anáforas ("ese proyecto", "esa empresa")
+            history = get_session_history(state["session_id"])
+            recent_user_msgs = [m["content"] for m in history if m.get("role") == "user"][-2:]
+            if recent_user_msgs:
+                search_query = f"{' '.join(recent_user_msgs)} {state['user_message']}"
+            else:
+                search_query = state["user_message"]
+
+            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Consultando Qdrant (Query: '%s') para intención '%s'...", search_query, intent)
             
             with RETRIEVAL_LATENCY_SECONDS.time():
                 if intent == "GREETING_OR_META":
-                    results = retrieve_cv_context(query=state["user_message"], top_k=2, tipo="perfil")
+                    results = retrieve_cv_context(query=search_query, top_k=2)
                 else:
-                    results = retrieve_cv_context(query=state["user_message"], top_k=4)
+                    results = retrieve_cv_context(query=search_query, top_k=4)
 
             state["retrieved_context"] = results
             state["sources"] = [r["texto"] for r in results]
@@ -129,13 +138,17 @@ def node_generate_response(state: AgentState) -> AgentState:
             else:
                 context_str = "\n---\n".join([c["texto"] for c in context_chunks])
 
+            history = get_session_history(state["session_id"])
+            recent_history_msgs = history[-4:] if history else []
+            chat_history_str = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in recent_history_msgs]) if recent_history_msgs else "Sin historial previo en esta sesión."
+
             nombre_candidato = "el Candidato"
             system_prompt = SYSTEM_GROUNDING_PROMPT.format(
                 nombre_candidato=nombre_candidato,
-                context_str=context_str
+                context_str=context_str,
+                chat_history_str=chat_history_str
             )
 
-            history = get_session_history(state["session_id"])
             input_items = list(history)
             input_items.append({"role": "user", "content": state["user_message"]})
 

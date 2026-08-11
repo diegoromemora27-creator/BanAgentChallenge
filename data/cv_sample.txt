@@ -1,9 +1,10 @@
 Juan Pérez
 AI Engineer Generativo & Backend Developer
 Ciudad de México, México
+Contacto Directo: juan.perez.ai@example.com | LinkedIn: https://www.linkedin.com/in/juanperez-ai
 
 RESUMEN PROFESIONAL
-Ingeniero en Inteligencia Artificial Generativa con más de 4 años de experiencia diseñando y desplegando sistemas RAG avanzados, microservicios en FastAPI y agentes conversacionales. Especializado en integración de modelos LLM con bases de datos vectoriales como Qdrant.
+Ingeniero en Inteligencia Artificial Generativa con más de 4 años de experiencia diseñando y desplegando sistemas RAG avanzados, microservicios en FastAPI y agentes conversacionales. Especializado en integración de modelos LLM con bases de datos vectoriales como Qdrant. Para contacto profesional o contrataciones, puedes escribirle directamente a juan.perez.ai@example.com o conectar a través de LinkedIn en https://www.linkedin.com/in/juanperez-ai.
 
 EXPERIENCIA LABORAL
 AI Engineer Senior | Tech Solutions Inc. | 2024 - Presente

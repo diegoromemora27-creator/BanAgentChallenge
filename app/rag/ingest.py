@@ -89,15 +89,19 @@ def build_chunks(cv_dict: Dict[str, Any], cv_version: str) -> List[Dict[str, Any
     """
     chunks = []
     
-    # 1. Perfil General
+    # 1. Perfil General y Contacto
     perfil = cv_dict.get("perfil", {})
     nombre = perfil.get("nombre", "Candidato")
     resumen = perfil.get("resumen", "")
     ubicacion = perfil.get("ubicacion", "")
-    texto_perfil = f"Perfil Profesional de {nombre}. Ubicación: {ubicacion}. Resumen: {resumen}"
+    contacto = perfil.get("contacto", {})
+    email = contacto.get("email", "") if isinstance(contacto, dict) else ""
+    linkedin = contacto.get("linkedin", "") if isinstance(contacto, dict) else ""
+    
+    texto_perfil = f"Perfil Profesional de {nombre}. Ubicación: {ubicacion}. Resumen: {resumen}. Datos de Contacto Directo: Email: {email}, LinkedIn: {linkedin}."
     chunks.append({
         "texto": texto_perfil,
-        "metadata": {"tipo": "perfil", "nombre": nombre, "cv_version": cv_version}
+        "metadata": {"tipo": "perfil", "nombre": nombre, "email": email, "linkedin": linkedin, "cv_version": cv_version}
     })
 
     # 2. Experiencia Laboral

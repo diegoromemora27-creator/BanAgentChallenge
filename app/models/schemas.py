@@ -33,11 +33,19 @@ class Proyecto(BaseModel):
     resultado: str = Field("", description="Impacto o métricas de resultado")
 
 
+class Contacto(BaseModel):
+    """Información de contacto del profesional."""
+    email: str = Field("", description="Correo electrónico de contacto")
+    linkedin: str = Field("", description="URL de perfil de LinkedIn")
+    telefono: str = Field("", description="Teléfono de contacto opcional")
+
+
 class Perfil(BaseModel):
     """Información general del perfil del candidato."""
     nombre: str = Field(..., description="Nombre completo del profesional")
     resumen: str = Field("", description="Resumen ejecutivo profesional")
     ubicacion: str = Field("", description="Ciudad o país de residencia")
+    contacto: Optional[Contacto] = Field(default=None, description="Datos de contacto directo")
 
 
 class Skills(BaseModel):
