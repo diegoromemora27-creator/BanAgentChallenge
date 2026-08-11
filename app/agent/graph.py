@@ -316,7 +316,7 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     total_tokens = usage.get("total_tokens", 350)
     estimated_cost_usd = round((total_tokens / 1000) * 0.00015, 6)
 
-    # Registrar Traza Enriquecida con Langfuse SDK Nativo (Coexistencia con LangGraph CallbackHandler)
+    # Registrar Traza Enriquecida con Langfuse SDK Nativo
     if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
         try:
             from langfuse import Langfuse
@@ -327,50 +327,39 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
                 host=host_url
             )
             
-            # Creación compatible con la versión v2 de Langfuse Python SDK
-            trace_obj = None
-            if hasattr(lf_client, "trace") and callable(getattr(lf_client, "trace")):
-                trace_obj = lf_client.trace(
-                    name="CV_Agent_Workflow_Execution",
-                    session_id=session_id,
-                    input=message,
-                    output=final_state.get("llm_response", ""),
-                    metadata={
-                        "intent": final_state.get("intent", ""),
-                        "reliability_score": reliability_score,
-                        "estimated_cost_usd": estimated_cost_usd
-                    }
-                )
-            elif hasattr(lf_client, "span"):
-                trace_obj = lf_client.span(
-                    name="CV_Agent_Workflow_Execution",
-                    input=message,
-                    output=final_state.get("llm_response", "")
-                )
+            trace_obj = lf_client.trace(
+                name="CV_Agent_Workflow_Execution",
+                session_id=session_id,
+                input=message,
+                output=final_state.get("llm_response", ""),
+                metadata={
+                    "intent": final_state.get("intent", ""),
+                    "reliability_score": reliability_score,
+                    "estimated_cost_usd": estimated_cost_usd
+                }
+            )
 
-            if trace_obj:
-                if hasattr(trace_obj, "span"):
-                    trace_obj.span(
-                        name="qdrant_vector_retrieval",
-                        input=message,
-                        output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
-                    )
-                if hasattr(trace_obj, "generation"):
-                    trace_obj.generation(
-                        name="llm_grounded_generation",
-                        model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
-                        output=final_state.get("llm_response", ""),
-                        usage={
-                            "prompt_tokens": usage.get("prompt_tokens", 250),
-                            "completion_tokens": usage.get("completion_tokens", 100),
-                            "total_tokens": total_tokens
-                        }
-                    )
+            trace_obj.span(
+                name="qdrant_vector_retrieval",
+                input=message,
+                output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
+            )
+
+            trace_obj.generation(
+                name="llm_grounded_generation",
+                model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
+                output=final_state.get("llm_response", ""),
+                usage={
+                    "prompt_tokens": usage.get("prompt_tokens", 250),
+                    "completion_tokens": usage.get("completion_tokens", 100),
+                    "total_tokens": total_tokens
+                }
+            )
             
             lf_client.flush()
             logger.info("Traza enriquecida de Langfuse SDK enviada con éxito a %s", host_url)
         except Exception as sdk_lf_err:
-            logger.warning("No se pudo enviar la traza nativa de Langfuse SDK: %s", sdk_lf_err)
+            logger.warning("No se pudo enviar la traza nativa de Langfuse SDK (%s)", sdk_lf_err)
 
     return {
         "reply": final_state.get("llm_response", "No se pudo obtener respuesta del agente."),
