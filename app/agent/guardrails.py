@@ -4,7 +4,7 @@ Módulo de guardrails de seguridad, moderación e intenciones.
 
 import re
 import logging
-from typing import Dict, Any, Tuple
+from typing import Tuple
 from app.agent.prompts import CLASSIFY_INTENT_PROMPT
 from app.llm.provider import generate_llm_response
 

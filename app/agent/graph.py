@@ -45,9 +45,14 @@ def node_input_guardrails(state: AgentState) -> AgentState:
     from app.metrics import NODE_EXECUTION_DURATION_SECONDS, NODE_ERRORS_TOTAL
     with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="guardrails_input").time():
         try:
+            logger.info("[PASO 1/4: GUARDRAILS ENTRADA] Evaluando mensaje: '%s'", state["user_message"])
             is_valid, err_msg = validate_input_guardrails(state["user_message"])
             state["is_valid_input"] = is_valid
             state["guardrail_error"] = err_msg
+            if not is_valid:
+                logger.warning("[PASO 1/4: GUARDRAILS ENTRADA] Mensaje bloqueado por guardrail: %s", err_msg)
+            else:
+                logger.info("[PASO 1/4: GUARDRAILS ENTRADA] Mensaje válido.")
         except Exception:
             NODE_ERRORS_TOTAL.labels(node_name="guardrails_input").inc()
             raise
@@ -60,9 +65,11 @@ def node_classify_intent(state: AgentState) -> AgentState:
     with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="classify_intent").time():
         try:
             if not state["is_valid_input"]:
+                logger.info("[PASO 2/4: CLASIFICACIÓN INTENCIÓN] Omitido debido a fallo en Guardrails de entrada.")
                 return state
             intent = classify_user_intent(state["user_message"])
             state["intent"] = intent
+            logger.info("[PASO 2/4: CLASIFICACIÓN INTENCIÓN] Intención clasificada: '%s'", intent)
         except Exception:
             NODE_ERRORS_TOTAL.labels(node_name="classify_intent").inc()
             raise
@@ -78,9 +85,11 @@ def node_retrieve_context(state: AgentState) -> AgentState:
             if intent == "OUT_OF_BOUNDS":
                 state["retrieved_context"] = []
                 RAG_RETRIEVED_DOCUMENTS_COUNT.set(0)
+                logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Intención fuera de alcance (OUT_OF_BOUNDS). Omite búsqueda en Qdrant.")
                 return state
 
             TOOL_INVOCATIONS_TOTAL.labels(tool_name="qdrant_vector_search").inc()
+            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Consultando Qdrant Vector DB para intención '%s'...", intent)
             
             with RETRIEVAL_LATENCY_SECONDS.time():
                 if intent == "GREETING_OR_META":
@@ -91,6 +100,7 @@ def node_retrieve_context(state: AgentState) -> AgentState:
             state["retrieved_context"] = results
             state["sources"] = [r["texto"] for r in results]
             RAG_RETRIEVED_DOCUMENTS_COUNT.set(len(results))
+            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Se obtuvieron %d chunks relevantes del CV.", len(results))
         except Exception:
             NODE_ERRORS_TOTAL.labels(node_name="retrieve_context").inc()
             raise
@@ -104,11 +114,13 @@ def node_generate_response(state: AgentState) -> AgentState:
         try:
             if not state["is_valid_input"]:
                 state["llm_response"] = state["guardrail_error"]
+                logger.info("[PASO 4/4: GENERACIÓN LLM] Devolviendo respuesta de guardrail de entrada.")
                 return state
 
             intent = state.get("intent", "CV_QUESTION")
             if intent == "OUT_OF_BOUNDS":
                 state["llm_response"] = "Como agente conversacional enfocado en el perfil profesional del candidato, solo estoy capacitado para responder preguntas sobre su experiencia laboral, proyectos, habilidades e historia profesional."
+                logger.info("[PASO 4/4: GENERACIÓN LLM] Devolviendo respuesta prefijada para consulta fuera de alcance.")
                 return state
 
             context_chunks = state.get("retrieved_context", [])
@@ -131,6 +143,7 @@ def node_generate_response(state: AgentState) -> AgentState:
             from app.logging_config import log_interaction_structured
 
             start_time = time.time()
+            logger.info("[PASO 4/4: GENERACIÓN LLM] Enviando prompt al proveedor LLM...")
 
             llm_out = generate_llm_response(
                 system_prompt=system_prompt,
@@ -159,6 +172,7 @@ def node_generate_response(state: AgentState) -> AgentState:
             try:
                 if not validate_output_guardrails(reply_text, context_chunks):
                     reply_text = "No dispongo de información suficiente en el CV para responder con exactitud a tu pregunta."
+                    logger.warning("[PASO 4/4: GENERACIÓN LLM] Respuesta bloqueada por guardrail de salida de alucinaciones.")
             except Exception as g_err:
                 logger.warning("Error durante la validación de guardrails de salida: %s", g_err)
 
@@ -166,6 +180,8 @@ def node_generate_response(state: AgentState) -> AgentState:
             state["latency_ms"] = round(latency_ms, 2)
             state["provider"] = provider_used
             state["usage"] = usage_info
+
+            logger.info("[PASO 4/4: GENERACIÓN LLM] Respuesta generada exitosamente con '%s' (latencia: %.2f ms).", provider_used, latency_ms)
 
             try:
                 log_interaction_structured(
@@ -274,6 +290,7 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
     """
     Función de entrada principal para invocar el flujo agéntico completo.
     """
+    logger.info("=== INICIANDO FLUJO AGÉNTICO (Session: %s) ===", session_id)
     initial_state: AgentState = {
         "user_message": message,
         "session_id": session_id,
@@ -304,6 +321,7 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
         try:
             final_state = agent_executor.invoke(initial_state, config=config)
             AGENT_REQUESTS_TOTAL.labels(status="success").inc()
+            logger.info("=== FLUJO AGÉNTICO FINALIZADO CON ÉXITO ===")
         except Exception as exec_err:
             logger.warning("Error ejecutando agente con checkpointer persistente (%s). Reintentando con ejecutor efímero...", exec_err)
             fallback_executor = workflow.compile(checkpointer=MemorySaver())
