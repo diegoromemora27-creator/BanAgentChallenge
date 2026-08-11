@@ -3,6 +3,7 @@ Orquestador conversacional basado en LangGraph.
 Define el grafo de estados para el flujo RAG estricto con Guardrails.
 """
 
+import os
 import logging
 from typing import Dict, Any, List, TypedDict
 from langgraph.graph import StateGraph, END
@@ -239,25 +240,31 @@ workflow.add_edge("generate_response", END)
 
 # Inicialización Singleton global de Langfuse CallbackHandler (SDK v3)
 _langfuse_handler = None
-try:
-    from langfuse.langchain import CallbackHandler
-    if settings.LANGFUSE_PUBLIC_KEY and settings.LANGFUSE_SECRET_KEY:
-        host_url = (
-            settings.LANGFUSE_HOST.strip()
-            or settings.LANGFUSE_BASE_URL.strip()
-            or "https://us.cloud.langfuse.com"
-        )
-        _langfuse_handler = CallbackHandler(
-            public_key=settings.LANGFUSE_PUBLIC_KEY.strip(),
-            secret_key=settings.LANGFUSE_SECRET_KEY.strip(),
-            host=host_url
-        )
-    else:
-        # En Langfuse v3, el constructor autodetecta de forma nativa las variables de Render (LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST)
+
+settings_host = (
+    getattr(settings, "LANGFUSE_HOST", "").strip()
+    or getattr(settings, "LANGFUSE_BASE_URL", "").strip()
+)
+
+if getattr(settings, "LANGFUSE_PUBLIC_KEY", None) and getattr(settings, "LANGFUSE_SECRET_KEY", None):
+    try:
+        from langfuse.langchain import CallbackHandler
+        os.environ["LANGFUSE_PUBLIC_KEY"] = settings.LANGFUSE_PUBLIC_KEY.strip()
+        os.environ["LANGFUSE_SECRET_KEY"] = settings.LANGFUSE_SECRET_KEY.strip()
+        if settings_host:
+            os.environ["LANGFUSE_HOST"] = settings_host
+            
         _langfuse_handler = CallbackHandler()
-    logger.info("CallbackHandler de Langfuse v3 acoplado exitosamente desde el entorno de Render.")
-except Exception as e:
-    logger.warning(f"Langfuse no se activó automáticamente (Faltan variables en Render): {e}")
+        logger.info("Langfuse v3 inicializado usando las credenciales explícitas de 'settings'.")
+    except Exception as e:
+        logger.error(f"Error al inicializar Langfuse usando el objeto 'settings': {e}")
+else:
+    try:
+        from langfuse.langchain import CallbackHandler
+        _langfuse_handler = CallbackHandler()
+        logger.info("Variables no encontradas en 'settings'. Inicializado mediante autodetección nativa del entorno de Render.")
+    except Exception as e:
+        logger.warning(f"Langfuse no se activó automáticamente (Faltan variables en Render): {e}")
 
 # Compilación del Grafo Executable con el Checkpointer configurado
 agent_executor = workflow.compile(checkpointer=checkpointer)
