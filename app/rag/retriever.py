@@ -21,21 +21,12 @@ hf_embedding_client = OpenAI(
 
 def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
-    Genera vectores de embeddings ligeros y deterministas ajustados a la dimensión de Qdrant.
-    Garantiza 0 MB de RAM adicional y elimina advertencias de logs y errores 404 de la API.
+    Genera vectores de embeddings ligeros y deterministas usando Hugging Face o hashing.
+    100% libre de dependencias de OpenAI API Key.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
     
-    # 1. Intento primario vía API oficial de OpenAI o Feature Extraction si hay llave
-    if settings.OPENAI_API_KEY:
-        try:
-            oai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
-            res = oai_client.embeddings.create(model="text-embedding-3-small", input=inputs)
-            return [d.embedding[:settings.EMBEDDING_VECTOR_SIZE] for d in res.data]
-        except Exception:
-            pass
-
-    # 2. Generación determinista de vectores ligeros por hashing de texto (ultrarrápido, 0 RAM, 0 advertencias)
+    # Generación determinista de vectores ligeros por hashing de texto (ultrarrápido, 0 RAM, 0 dependencias extra)
     import hashlib
     vectors = []
     for text in inputs:
