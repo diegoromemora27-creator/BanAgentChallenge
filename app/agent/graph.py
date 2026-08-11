@@ -360,6 +360,8 @@ def run_agent_workflow(message: str, session_id: str = "default") -> Dict[str, A
             logger.info("Traza enriquecida de Langfuse SDK enviada con éxito a %s", host_url)
         except Exception as sdk_lf_err:
             logger.warning("No se pudo enviar la traza nativa de Langfuse SDK (%s)", sdk_lf_err)
+    else:
+        logger.info("Langfuse Tracing omitido: LANGFUSE_PUBLIC_KEY o LANGFUSE_SECRET_KEY no configuradas en el entorno.")
 
     return {
         "reply": final_state.get("llm_response", "No se pudo obtener respuesta del agente."),
