@@ -39,13 +39,13 @@ def validate_input_guardrails(user_message: str) -> Tuple[bool, str]:
     return True, ""
 
 
-def classify_user_intent(user_message: str) -> str:
+def classify_user_intent(user_message: str, history_str: str = "Sin historial previo.") -> str:
     """
-    Clasifica la intención del usuario mediante el LLM en una de las etiquetas válidas.
+    Clasifica la intención del usuario mediante el LLM considerando el historial reciente para resolver anáforas.
     """
-    prompt = CLASSIFY_INTENT_PROMPT.format(user_message=user_message)
+    prompt = CLASSIFY_INTENT_PROMPT.format(user_message=user_message, history_str=history_str)
     response = generate_llm_response(
-        system_prompt="Eres un clasificador estricto de intenciones.",
+        system_prompt="Eres un clasificador estricto de intenciones con conciencia del contexto conversacional previo.",
         input_items=[{"role": "user", "content": prompt}],
         model_name="llama-3.1-8b-instant",
         temperature=0.0,

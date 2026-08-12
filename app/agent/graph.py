@@ -61,16 +61,24 @@ def node_input_guardrails(state: AgentState) -> AgentState:
 
 
 def node_classify_intent(state: AgentState) -> AgentState:
-    """Nodo 2: Clasificación de intención."""
+    """Nodo 2: Clasificación de intención consciente del contexto previa."""
     from app.metrics import NODE_EXECUTION_DURATION_SECONDS, NODE_ERRORS_TOTAL
     with NODE_EXECUTION_DURATION_SECONDS.labels(node_name="classify_intent").time():
         try:
             if not state["is_valid_input"]:
                 logger.info("[PASO 2/4: CLASIFICACIÓN INTENCIÓN] Omitido debido a fallo en Guardrails de entrada.")
                 return state
-            intent = classify_user_intent(state["user_message"])
+
+            history = get_session_history(state["session_id"])
+            recent_turns = history[-2:] if history else []
+            if recent_turns:
+                history_str = "\n".join([f"{m['role'].capitalize()}: {m['content']}" for m in recent_turns])
+            else:
+                history_str = "Sin historial previo."
+
+            intent = classify_user_intent(state["user_message"], history_str=history_str)
             state["intent"] = intent
-            logger.info("[PASO 2/4: CLASIFICACIÓN INTENCIÓN] Intención clasificada: '%s'", intent)
+            logger.info("[PASO 2/4: CLASIFICACIÓN INTENCIÓN] Intención clasificada: '%s' (con historial: %s)", intent, bool(recent_turns))
         except Exception:
             NODE_ERRORS_TOTAL.labels(node_name="classify_intent").inc()
             raise

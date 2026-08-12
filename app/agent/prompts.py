@@ -69,17 +69,22 @@ Historial reciente de la conversación (para resolver referencias implícitas):
 """
 
 CLASSIFY_INTENT_PROMPT = """
-Clasifica el mensaje del usuario en EXACTAMENTE una de las siguientes categorías:
+Historial reciente de la conversación:
+---
+{history_str}
+---
+
+Mensaje del usuario: "{user_message}"
+
+Clasifica el NUEVO mensaje del usuario en EXACTAMENTE una de las siguientes categorías, considerando que si es una pregunta de seguimiento con pronombres o anáforas ("ahí", "eso", "esa empresa", "¿cuánto tiempo llevas ahí?"), debes determinar la intención según el contexto del historial:
 
 1. "CONTACT": Preguntas sobre datos de contacto, correo electrónico, teléfono, LinkedIn o cómo comunicarse con el candidato.
 2. "EDUCATION": Preguntas sobre educación, estudios, universidad, maestría, licenciatura, títulos, certificaciones o cursos.
-3. "EXPERIENCE": Preguntas sobre trayectoria laboral, empresas donde ha trabajado, puestos, docencia o experiencia profesional general.
+3. "EXPERIENCE": Preguntas sobre trayectoria laboral, empresas donde ha trabajado, puestos, docencia o experiencia profesional general (incluye preguntas de seguimiento sobre tiempo en un empleo).
 4. "PROJECTS": Preguntas sobre proyectos desarrollados, arquitectura de proyectos o soluciones construidas.
 5. "SKILLS": Preguntas sobre habilidades técnicas, lenguajes, frameworks, herramientas o competencias blandas.
 6. "GREETING_OR_META": Saludos, despedidas, o preguntas sobre el bot/agente y su funcionamiento.
 7. "OUT_OF_BOUNDS": Solicitud completamente ajena a la trayectoria o perfil del candidato.
-
-Mensaje: "{user_message}"
 
 Responde ÚNICAMENTE con la etiqueta elegida, sin puntos ni texto adicional.
 """
