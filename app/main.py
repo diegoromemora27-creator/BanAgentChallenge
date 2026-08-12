@@ -47,13 +47,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configuración de CORS
+# Configuración de CORS universal para permitir peticiones desde navegadores y la plataforma del Hackathon
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "*",
+        "https://hackathon-2024.com",
+        "http://hackathon-2024.com"
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -123,6 +128,9 @@ def get_agent_card(request: Request):
     Usado por plataformas como Parley o catálogos A2A para autocompletar formularios y descubrir el agente.
     """
     base_url = str(request.base_url).rstrip("/")
+    if base_url.startswith("http://") and "localhost" not in base_url and "127.0.0.1" not in base_url:
+        base_url = base_url.replace("http://", "https://", 1)
+
     responses_endpoint = f"{base_url}/responses"
     v1_responses_endpoint = f"{base_url}/v1/responses"
 
