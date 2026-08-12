@@ -331,15 +331,22 @@ def create_response(request: Request, req: ResponsesRequest):
     if not last_user_message.strip():
         last_user_message = "Hola"
 
-    # Si se solicita streaming (stream=True), responder usando Server-Sent Events (SSE)
+    # Si se solicita streaming (stream=True), responder usando Server-Sent Events (SSE) con el estándar oficial de Open Responses
     if req.stream:
         def sse_event_generator():
             resp_id = f"resp_{uuid.uuid4().hex[:12]}"
             msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+            seq_num = 0
 
-            # 1. EMITIR EVENTOS INICIALES DE INMEDIATO (< 1ms) PARA EVITAR TIMEOUTS EN EL FRONTEND
+            def next_seq():
+                nonlocal seq_num
+                seq_num += 1
+                return seq_num
+
+            # 1. Evento response.created
             created_evt = {
                 "type": "response.created",
+                "sequence_number": next_seq(),
                 "response": {
                     "id": resp_id,
                     "model": req.model or "cv-agent-v1",
@@ -348,9 +355,10 @@ def create_response(request: Request, req: ResponsesRequest):
             }
             yield f"event: response.created\ndata: {json.dumps(created_evt)}\n\n"
 
+            # 2. Evento response.output_item.added
             msg_added_evt = {
                 "type": "response.output_item.added",
-                "response_id": resp_id,
+                "sequence_number": next_seq(),
                 "output_index": 0,
                 "item": {
                     "id": msg_id,
@@ -362,8 +370,23 @@ def create_response(request: Request, req: ResponsesRequest):
             }
             yield f"event: response.output_item.added\ndata: {json.dumps(msg_added_evt)}\n\n"
 
+            # 3. Evento response.content_part.added
+            content_part_added_evt = {
+                "type": "response.content_part.added",
+                "sequence_number": next_seq(),
+                "item_id": msg_id,
+                "output_index": 0,
+                "content_index": 0,
+                "part": {
+                    "type": "output_text",
+                    "annotations": [],
+                    "text": ""
+                }
+            }
+            yield f"event: response.content_part.added\ndata: {json.dumps(content_part_added_evt)}\n\n"
+
             try:
-                # 2. EJECUTAR EL GRAFO AGÉNTICO EN SEGUNDO PLANO MIENTRAS EL STREAM PERMANECE ABIERTO Y ACTIVO
+                # 4. EJECUTAR EL GRAFO AGÉNTICO EN SEGUNDO PLANO
                 result = run_agent_workflow(
                     message=last_user_message,
                     session_id=session_id,
@@ -371,7 +394,7 @@ def create_response(request: Request, req: ResponsesRequest):
                 )
                 reply_text = result["reply"]
 
-                # 3. EMITIR FRAMES DE TEXTO EN DELTA CON FORMATO ESTRICTO OPEN RESPONSES
+                # 5. EMITIR FRAMES response.output_text.delta (REPETIDOS N VECES)
                 words = reply_text.split(" ")
                 chunk_size = 4
                 for i in range(0, len(words), chunk_size):
@@ -380,18 +403,66 @@ def create_response(request: Request, req: ResponsesRequest):
                         chunk_text += " "
                     
                     delta_evt = {
-                        "type": "response.text.delta",
-                        "response_id": resp_id,
+                        "type": "response.output_text.delta",
+                        "sequence_number": next_seq(),
+                        "item_id": msg_id,
                         "output_index": 0,
                         "content_index": 0,
                         "delta": chunk_text
                     }
-                    yield f"event: response.text.delta\ndata: {json.dumps(delta_evt)}\n\n"
+                    yield f"event: response.output_text.delta\ndata: {json.dumps(delta_evt)}\n\n"
                     time.sleep(0.01)
 
-                # 4. EMITIR EVENTO FINAL Y FINALIZAR EL STREAM (SIN DATA: [DONE])
+                # 6. Evento response.output_text.done
+                text_done_evt = {
+                    "type": "response.output_text.done",
+                    "sequence_number": next_seq(),
+                    "item_id": msg_id,
+                    "output_index": 0,
+                    "content_index": 0,
+                    "text": reply_text
+                }
+                yield f"event: response.output_text.done\ndata: {json.dumps(text_done_evt)}\n\n"
+
+                # 7. Evento response.content_part.done
+                part_done_evt = {
+                    "type": "response.content_part.done",
+                    "sequence_number": next_seq(),
+                    "item_id": msg_id,
+                    "output_index": 0,
+                    "content_index": 0,
+                    "part": {
+                        "type": "output_text",
+                        "annotations": [],
+                        "text": reply_text
+                    }
+                }
+                yield f"event: response.content_part.done\ndata: {json.dumps(part_done_evt)}\n\n"
+
+                # 8. Evento response.output_item.done
+                item_done_evt = {
+                    "type": "response.output_item.done",
+                    "sequence_number": next_seq(),
+                    "output_index": 0,
+                    "item": {
+                        "id": msg_id,
+                        "type": "message",
+                        "role": "assistant",
+                        "status": "completed",
+                        "content": [
+                            {
+                                "type": "output_text",
+                                "text": reply_text
+                            }
+                        ]
+                    }
+                }
+                yield f"event: response.output_item.done\ndata: {json.dumps(item_done_evt)}\n\n"
+
+                # 9. Evento response.completed
                 completed_evt = {
                     "type": "response.completed",
+                    "sequence_number": next_seq(),
                     "response": {
                         "id": resp_id,
                         "model": req.model or "cv-agent-v1",
@@ -401,19 +472,23 @@ def create_response(request: Request, req: ResponsesRequest):
                                 "id": msg_id,
                                 "type": "message",
                                 "role": "assistant",
-                                "content": [{"type": "text", "text": reply_text}]
+                                "status": "completed",
+                                "content": [{"type": "output_text", "text": reply_text}]
                             }
                         ],
-                        "output_text": reply_text,
-                        "text": reply_text
+                        "output_text": reply_text
                     }
                 }
                 yield f"event: response.completed\ndata: {json.dumps(completed_evt)}\n\n"
+
+                # 10. Evento terminal estricto data: [DONE]
+                yield "data: [DONE]\n\n"
 
             except Exception as stream_err:
                 logger.error("Error en streaming SSE de Open Responses: %s", stream_err)
                 err_evt = {
                     "type": "error",
+                    "sequence_number": next_seq(),
                     "error": {"message": str(stream_err)}
                 }
                 yield f"event: error\ndata: {json.dumps(err_evt)}\n\n"
