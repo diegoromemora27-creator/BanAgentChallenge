@@ -26,21 +26,22 @@ except ImportError:
 AGENT_LATENCY_SECONDS = Histogram(
     "agent_latency_seconds",
     "Tiempo total de respuesta del agente conversacional",
-    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+    buckets=(0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 15.0, 25.0, 40.0, 60.0)
 )
 
 NODE_EXECUTION_DURATION_SECONDS = Histogram(
     "node_execution_duration_seconds",
     "Duración de ejecución por nodo individual de LangGraph",
     ["node_name"],
-    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0)
+    buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 20.0)
 )
 
 RETRIEVAL_LATENCY_SECONDS = Histogram(
     "retrieval_latency_seconds",
     "Tiempo tomado para buscar vectores en Qdrant Cloud",
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5)
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
 )
+
 
 # 2. Métricas de Costo y Uso de Tokens (Counters)
 LLM_TOKENS_TOTAL = Counter(
