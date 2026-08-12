@@ -395,8 +395,15 @@ def run_agent_workflow(message: str, session_id: str, system_instructions: Optio
     top_score = context_chunks[0]["score"] if context_chunks else 0.0
     n_chunks = len(context_chunks)
     
-    reliability_score = round(min(1.0, top_score if top_score > 0 else (0.85 if n_chunks > 0 else 0.40)), 2)
+    if n_chunks > 0:
+        # Si se recuperaron chunks del CV, asigna una confiabilidad de evidencia fundamentada (0.80 a 0.98)
+        reliability_score = round(min(0.98, max(0.80, top_score if top_score <= 1.0 else top_score / 100.0)), 2)
+    else:
+        intent = final_state.get("intent", "")
+        reliability_score = 1.00 if intent in ["GREETING_OR_META", "OUT_OF_BOUNDS"] else 0.40
+
     RAG_RELIABILITY_SCORE.set(reliability_score)
+
 
     usage = final_state.get("usage", {})
     total_tokens = usage.get("total_tokens", 350)
