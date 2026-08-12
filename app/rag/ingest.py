@@ -89,19 +89,37 @@ def build_chunks(cv_dict: Dict[str, Any], cv_version: str) -> List[Dict[str, Any
     """
     chunks = []
     
-    # 1. Perfil General y Contacto
+    # 1. Perfil General
     perfil = cv_dict.get("perfil", {})
     nombre = perfil.get("nombre", "Candidato")
     resumen = perfil.get("resumen", "")
     ubicacion = perfil.get("ubicacion", "")
-    contacto = perfil.get("contacto", {})
-    email = contacto.get("email", "") if isinstance(contacto, dict) else ""
-    linkedin = contacto.get("linkedin", "") if isinstance(contacto, dict) else ""
+    contacto = perfil.get("contacto", {}) if isinstance(perfil.get("contacto"), dict) else {}
+    email = contacto.get("email", "")
+    linkedin = contacto.get("linkedin", "")
+    telefono = contacto.get("telefono", "")
     
-    texto_perfil = f"Perfil Profesional de {nombre}. Ubicación: {ubicacion}. Resumen: {resumen}. Datos de Contacto Directo: Email: {email}, LinkedIn: {linkedin}."
+    texto_perfil = f"Perfil Profesional de {nombre}. Ubicación: {ubicacion}. Resumen: {resumen}."
     chunks.append({
         "texto": texto_perfil,
-        "metadata": {"tipo": "perfil", "nombre": nombre, "email": email, "linkedin": linkedin, "cv_version": cv_version}
+        "metadata": {"tipo": "perfil", "nombre": nombre, "email": email, "linkedin": linkedin, "telefono": telefono, "cv_version": cv_version}
+    })
+
+    # 1b. Chunk explícito de Contacto Directo
+    contacto_partes = []
+    if email:
+        contacto_partes.append(f"correo electrónico {email}")
+    if telefono:
+        contacto_partes.append(f"teléfono {telefono}")
+    if linkedin:
+        contacto_partes.append(f"LinkedIn {linkedin}")
+    else:
+        contacto_partes.append("no tiene LinkedIn registrado en este CV")
+
+    texto_contacto = f"Para contactar a {nombre}: " + ", ".join(contacto_partes) + "."
+    chunks.append({
+        "texto": texto_contacto,
+        "metadata": {"tipo": "contacto", "email": email, "telefono": telefono, "linkedin": linkedin, "cv_version": cv_version}
     })
 
     # 2. Experiencia Laboral
@@ -132,7 +150,54 @@ def build_chunks(cv_dict: Dict[str, Any], cv_version: str) -> List[Dict[str, Any
         "metadata": {"tipo": "skills", "cv_version": cv_version}
     })
 
-    # 5. Chunk explícito de Límites de Información (Anti-Alucinación)
+    # 5. Educación
+    educacion_list = cv_dict.get("educacion", [])
+    for edu in educacion_list:
+        texto = f"Educación de {nombre}: {edu.get('titulo', '')} en {edu.get('institucion', '')}"
+        if edu.get("periodo"):
+            texto += f" ({edu['periodo']})"
+        texto += "."
+        chunks.append({
+            "texto": texto,
+            "metadata": {"tipo": "educacion", "cv_version": cv_version, **edu}
+        })
+
+    if educacion_list:
+        resumen_edu = "; ".join(f"{e.get('titulo', '')} en {e.get('institucion', '')}" for e in educacion_list)
+        chunks.append({
+            "texto": f"Formación académica completa de {nombre}: {resumen_edu}.",
+            "metadata": {"tipo": "educacion", "cv_version": cv_version}
+        })
+
+    # 6. Certificaciones
+    certs = cv_dict.get("certificaciones", [])
+    if certs:
+        chunks.append({
+            "texto": f"Certificaciones de {nombre}: {', '.join(certs)}.",
+            "metadata": {"tipo": "certificaciones", "cv_version": cv_version}
+        })
+
+    # 7. Cursos Selectos
+    cursos = cv_dict.get("cursos_selectos", [])
+    if cursos:
+        chunks.append({
+            "texto": f"Cursos y diplomados adicionales de {nombre}: {', '.join(cursos)}.",
+            "metadata": {"tipo": "cursos", "cv_version": cv_version}
+        })
+
+    # 8. Colaboración Académica / Docencia
+    for colab in cv_dict.get("colaboracion_academica", []):
+        texto = f"{nombre} se desempeña como {colab.get('rol', '')} en {colab.get('institucion', '')}"
+        if colab.get("periodo"):
+            texto += f" ({colab['periodo']})"
+        if colab.get("descripcion"):
+            texto += f". {colab['descripcion']}"
+        chunks.append({
+            "texto": texto,
+            "metadata": {"tipo": "docencia", "cv_version": cv_version, **colab}
+        })
+
+    # 9. Chunk explícito de Límites de Información (Anti-Alucinación)
     chunks.append({
         "texto": f"Este agente contiene únicamente información documentada en el CV de {nombre}. No dispone de datos sobre pretensiones salariales, referencias personales ni información privada no especificada aquí.",
         "metadata": {"tipo": "meta", "cv_version": cv_version}

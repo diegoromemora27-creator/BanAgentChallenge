@@ -99,13 +99,24 @@ def node_retrieve_context(state: AgentState) -> AgentState:
             else:
                 search_query = state["user_message"]
 
-            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Consultando Qdrant (Query: '%s') para intención '%s'...", search_query, intent)
+            INTENT_TO_TIPOS = {
+                "CONTACT": ["contacto", "perfil"],
+                "EDUCATION": ["educacion", "cursos", "certificaciones"],
+                "EXPERIENCE": ["experiencia", "docencia"],
+                "SKILLS": ["skills"],
+                "PROJECTS": ["proyectos"],
+                "GREETING_OR_META": ["perfil", "contacto", "meta"]
+            }
+
+            tipos_filtro = INTENT_TO_TIPOS.get(intent)
+
+            logger.info("[PASO 3/4: RETRIEVAL CONTEXTO] Consultando Qdrant (Query: '%s', Intención: '%s', Tipos: %s)...", search_query, intent, tipos_filtro)
             
             with RETRIEVAL_LATENCY_SECONDS.time():
                 if intent == "GREETING_OR_META":
-                    results = retrieve_cv_context(query=search_query, top_k=2)
+                    results = retrieve_cv_context(query=search_query, top_k=2, tipo=tipos_filtro)
                 else:
-                    results = retrieve_cv_context(query=search_query, top_k=4)
+                    results = retrieve_cv_context(query=search_query, top_k=4, tipo=tipos_filtro)
 
             state["retrieved_context"] = results
             state["sources"] = [r["texto"] for r in results]

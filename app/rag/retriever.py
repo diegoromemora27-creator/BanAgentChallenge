@@ -107,14 +107,16 @@ def ensure_collection_exists():
         logger.error("Error verificando/creando la colección en Qdrant: %s", err)
 
 
-def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) -> List[Dict[str, Any]]:
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, MatchAny, PayloadSchemaType
+
+def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[str]] = None) -> List[Dict[str, Any]]:
     """
     Realiza una búsqueda semántica de información relevante del CV en Qdrant.
 
     Args:
         query: Pregunta o texto de consulta.
         top_k: Número máximo de resultados a recuperar.
-        tipo: Filtro opcional por tipo de chunk ("experiencia", "proyecto", "skills").
+        tipo: Filtro opcional por tipo o lista de tipos de chunk.
 
     Returns:
         Lista de diccionarios con el texto recuperado, score de similitud y metadatos.
@@ -130,7 +132,10 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str] = None) 
 
     query_filter = None
     if tipo:
-        query_filter = Filter(must=[FieldCondition(key="tipo", match=MatchValue(value=tipo))])
+        if isinstance(tipo, list):
+            query_filter = Filter(must=[FieldCondition(key="tipo", match=MatchAny(any=tipo))])
+        else:
+            query_filter = Filter(must=[FieldCondition(key="tipo", match=MatchValue(value=tipo))])
 
     try:
         # En qdrant-client >= 1.10.0 se utiliza query_points o search

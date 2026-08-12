@@ -54,12 +54,31 @@ class Skills(BaseModel):
     generales: List[str] = Field(default_factory=list, description="Habilidades blandas o directivas")
 
 
+class Educacion(BaseModel):
+    """Formación académica."""
+    titulo: str = Field("", description="Grado o título obtenido")
+    institucion: str = Field("", description="Universidad o institución")
+    periodo: str = Field("", description="Modalidad o fechas, ej. 'Remote'")
+
+
+class ColaboracionAcademica(BaseModel):
+    """Docencia o colaboración académica."""
+    rol: str = Field("", description="Rol académico, ej. Profesor / Docente")
+    institucion: str = Field("", description="Universidad o centro educativo")
+    periodo: str = Field("", description="Período de docencia")
+    descripcion: str = Field("", description="Detalle de cursos e impartición")
+
+
 class CV(BaseModel):
     """Esquema completo y estructurado del Curriculum Vitae."""
     perfil: Perfil
     experiencia: List[Experiencia] = Field(default_factory=list)
     proyectos: List[Proyecto] = Field(default_factory=list)
     skills: Skills
+    educacion: List[Educacion] = Field(default_factory=list)
+    certificaciones: List[str] = Field(default_factory=list)
+    cursos_selectos: List[str] = Field(default_factory=list)
+    colaboracion_academica: List[ColaboracionAcademica] = Field(default_factory=list)
 
 
 # ==========================================

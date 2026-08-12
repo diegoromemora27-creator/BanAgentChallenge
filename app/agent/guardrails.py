@@ -41,7 +41,7 @@ def validate_input_guardrails(user_message: str) -> Tuple[bool, str]:
 
 def classify_user_intent(user_message: str) -> str:
     """
-    Clasifica la intención del usuario mediante el LLM en una de las tres etiquetas válidas.
+    Clasifica la intención del usuario mediante el LLM en una de las etiquetas válidas.
     """
     prompt = CLASSIFY_INTENT_PROMPT.format(user_message=user_message)
     response = generate_llm_response(
@@ -52,14 +52,14 @@ def classify_user_intent(user_message: str) -> str:
         max_tokens=20
     )
     
-    intent = response.get("text", "").strip().upper()
+    raw_intent = response.get("text", "").strip().upper()
     
-    if "GREETING" in intent:
-        return "GREETING_OR_META"
-    elif "OUT" in intent:
-        return "OUT_OF_BOUNDS"
-    else:
-        return "CV_QUESTION"
+    valid_intents = ["CONTACT", "EDUCATION", "EXPERIENCE", "PROJECTS", "SKILLS", "GREETING_OR_META", "OUT_OF_BOUNDS"]
+    for valid in valid_intents:
+        if valid in raw_intent:
+            return valid
+            
+    return "EXPERIENCE"
 
 
 def validate_output_guardrails(response_text: str, retrieved_context: list) -> bool:
