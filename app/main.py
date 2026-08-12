@@ -121,7 +121,7 @@ def root():
     }
 
 
-@app.get("/.well-known/agent-card.json", response_model=AgentCardSchema, tags=["Agent Metadata (A2A)"])
+@app.get("/.well-known/agent-card.json", tags=["Agent Metadata (A2A)"])
 def get_agent_card(request: Request):
     """
     Endpoint público que expone el manifiesto de la tarjeta de agente A2A.
@@ -134,44 +134,60 @@ def get_agent_card(request: Request):
     responses_endpoint = f"{base_url}/responses"
     v1_responses_endpoint = f"{base_url}/v1/responses"
 
-    interfaces = [
-        AgentInterface(name="open_responses", protocol="open_responses", url=responses_endpoint),
-        AgentInterface(name="Open Responses", protocol="open_responses", url=v1_responses_endpoint)
-    ]
-
     prompts_list = [
-        "¿Cuál es el perfil profesional y experiencia del candidato?",
-        "¿Qué proyectos de IA y RAG ha desarrollado?",
-        "¿Cuáles son sus principales habilidades y tecnologías dominadas?",
-        "¿Tiene experiencia con FastAPI, LangChain y bases de datos vectoriales?",
-        "¿Qué logros destacan en su trayectoria laboral?",
+        "¿Cuál es la trayectoria profesional de Diego Romero Mora?",
+        "¿Qué proyectos de Inteligencia Artificial y RAG ha construido?",
+        "¿Qué tecnologías y lenguajes de programación domina?",
+        "¿Tiene experiencia trabajando con FastAPI, LangGraph y Qdrant Cloud?",
+        "¿Cuáles son sus principales logros en sus empleos anteriores?",
         "¿Cómo puedo contactar al candidato?"
     ]
 
-    return AgentCardSchema(
-        name="Agente Conversacional CV · Diego Romero Mora",
-        description="Agente RAG estricto para responder sobre la experiencia laboral, habilidades, proyectos y perfil profesional de Diego Romero Mora.",
-        version=settings.VERSION,
-        supportedInterfaces=interfaces,
-        interfaces=interfaces,
-        responses_url=responses_endpoint,
-        url=responses_endpoint,
-        open_responses_url=responses_endpoint,
-        authentication=AgentAuthentication(
-            type="bearer",
-            header="Authorization",
-            description="Requiere API Key enviada en el header Authorization: Bearer <API_KEY>"
-        ),
-        capabilities=AgentCapabilities(
-            open_responses=True,
-            streaming=False,
-            file_input=True,
-            image_input=False
-        ),
-        starter_prompts=prompts_list,
-        prompts=prompts_list,
-        sample_prompts=prompts_list
-    )
+    return {
+        "name": "Agente Conversacional CV - Diego Romero Mora",
+        "description": "Agente RAG estricto para responder sobre la experiencia laboral, habilidades, proyectos y perfil profesional de Diego Romero Mora.",
+        "version": settings.VERSION,
+        "url": responses_endpoint,
+        "responses_url": responses_endpoint,
+        "open_responses_url": responses_endpoint,
+        "supportedInterfaces": [
+            {
+                "name": "open_responses",
+                "protocol": "open_responses",
+                "url": responses_endpoint
+            },
+            {
+                "name": "Open Responses",
+                "protocol": "open_responses",
+                "url": v1_responses_endpoint
+            },
+            {
+                "type": "open_responses",
+                "url": responses_endpoint
+            }
+        ],
+        "interfaces": [
+            {
+                "name": "open_responses",
+                "protocol": "open_responses",
+                "url": responses_endpoint
+            }
+        ],
+        "authentication": {
+            "type": "bearer",
+            "header": "Authorization",
+            "description": "Authorization: Bearer <API_KEY>"
+        },
+        "capabilities": {
+            "open_responses": True,
+            "streaming": False,
+            "file_input": True,
+            "image_input": False
+        },
+        "starter_prompts": prompts_list,
+        "prompts": prompts_list,
+        "sample_prompts": prompts_list
+    }
 
 
 @app.get("/health", tags=["Health"])
