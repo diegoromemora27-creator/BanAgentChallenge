@@ -3,60 +3,67 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Exposición Técnica: Agente Conversacional de CV · Diego Romero Mora</title>
+  <title>Agente Conversacional RAG · Prueba Técnica Banorte | Diego Romero Mora</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --bg-main: #f8fafc;
-      --bg-card: #ffffff;
+      --bg-body: #f8fafc;
+      --bg-surface: #ffffff;
       --bg-subtle: #f1f5f9;
       --border-color: #e2e8f0;
       --border-accent: #cbd5e1;
       
-      --primary-red: #eb0029;
-      --primary-red-light: #fff5f5;
+      --banorte-red: #eb0029;
+      --banorte-red-light: #fff5f5;
+      --banorte-red-hover: #c90022;
+      
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #64748b;
+      
       --accent-blue: #0284c7;
-      --accent-blue-light: #f0f9ff;
+      --accent-blue-bg: #f0f9ff;
       --accent-green: #16a34a;
-      --accent-green-light: #f0fdf4;
-      --accent-purple: #9333ea;
+      --accent-green-bg: #f0fdf4;
+      --accent-amber: #d97706;
+      --accent-amber-bg: #fffbeb;
       
-      --text-main: #0f172a;
-      --text-muted: #475569;
-      --text-dim: #64748b;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
       
-      --font-main: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-code: 'JetBrains Mono', monospace;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-      --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-card: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background-color: var(--bg-main);
-      color: var(--text-main);
-      font-family: var(--font-main);
+      background-color: var(--bg-body);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
       line-height: 1.6;
-      padding-top: 80px;
+      padding-top: 75px;
+      -webkit-font-smoothing: antialiased;
     }
 
+    /* Fixed Corporate Header */
     header {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
-      height: 70px;
+      height: 75px;
       background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 40px;
+      padding: 0 48px;
       z-index: 1000;
       box-shadow: var(--shadow-sm);
     }
@@ -64,265 +71,404 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-weight: 700;
+      gap: 14px;
+      font-weight: 800;
       font-size: 1.15rem;
+      color: var(--text-primary);
     }
 
     .brand-badge {
-      background: var(--primary-red);
-      color: #fff;
-      padding: 4px 10px;
+      background: var(--banorte-red);
+      color: #ffffff;
+      padding: 5px 12px;
       border-radius: 6px;
       font-size: 0.75rem;
       font-weight: 800;
       letter-spacing: 0.5px;
-    }
-
-    .nav-steps {
-      display: flex;
-      gap: 6px;
-    }
-
-    .step-btn {
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-color);
-      color: var(--text-muted);
-      padding: 8px 14px;
-      border-radius: 8px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-decoration: none;
-    }
-
-    .step-btn:hover, .step-btn.active {
-      background: var(--primary-red);
-      color: #ffffff;
-      border-color: var(--primary-red);
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 20px;
-    }
-
-    .hero-section {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 40px;
-      margin-bottom: 40px;
-      box-shadow: var(--shadow-md);
-    }
-
-    .hero-title {
-      font-size: 2.2rem;
-      font-weight: 800;
-      color: var(--text-main);
-      margin-bottom: 12px;
-    }
-
-    .hero-subtitle {
-      font-size: 1.1rem;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-
-    .agenda-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin-top: 24px;
-    }
-
-    .agenda-card {
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-color);
-      padding: 16px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-    }
-
-    .agenda-card strong {
-      display: block;
-      color: var(--primary-red);
-      margin-bottom: 4px;
-    }
-
-    .section-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border-color);
-      border-radius: 16px;
-      padding: 36px;
-      margin-bottom: 40px;
-      box-shadow: var(--shadow-md);
-    }
-
-    .section-tag {
-      display: inline-block;
-      background: var(--primary-red-light);
-      color: var(--primary-red);
-      font-weight: 700;
-      font-size: 0.8rem;
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-bottom: 12px;
       text-transform: uppercase;
     }
 
-    .section-title {
-      font-size: 1.6rem;
+    .nav-links {
+      display: flex;
+      gap: 8px;
+    }
+
+    .nav-link {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+      background: var(--banorte-red);
+      color: #ffffff;
+      border-color: var(--banorte-red);
+    }
+
+    .container {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 40px 24px 80px 24px;
+    }
+
+    /* Hero Banner */
+    .hero {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 48px;
+      margin-bottom: 48px;
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 6px;
+      height: 100%;
+      background: var(--banorte-red);
+    }
+
+    .hero-pretitle {
+      display: inline-block;
+      color: var(--banorte-red);
       font-weight: 700;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .hero-title {
+      font-size: 2.5rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      margin-bottom: 12px;
+      line-height: 1.2;
+    }
+
+    .hero-tagline {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--banorte-red);
       margin-bottom: 20px;
+    }
+
+    .hero-description {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 920px;
+      margin-bottom: 28px;
+      line-height: 1.7;
+    }
+
+    .hero-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      padding-top: 20px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Metrics Grid Banner */
+    .metrics-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: var(--banorte-red);
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .metric-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Section Styling */
+    .section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 44px;
+      margin-bottom: 48px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .section-fig {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--banorte-red);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      letter-spacing: -0.01em;
     }
 
     .grid-2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 24px;
+      gap: 32px;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 868px) {
       .grid-2 { grid-template-columns: 1fr; }
+      .metrics-bar { grid-template-columns: repeat(2, 1fr); }
     }
 
-    .box-callout {
+    /* Callout Boxes */
+    .card-box {
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 28px;
       background: var(--bg-subtle);
-      border-left: 4px solid var(--primary-red);
-      padding: 20px;
-      border-radius: 0 10px 10px 0;
-      margin-bottom: 20px;
     }
 
-    .box-blue { border-left-color: var(--accent-blue); background: var(--accent-blue-light); }
-    .box-green { border-left-color: var(--accent-green); background: var(--accent-green-light); }
+    .card-box-danger {
+      border-left: 5px solid var(--banorte-red);
+      background: #fef2f2;
+    }
 
-    /* Node Graph UI */
-    .nodes-flow {
+    .card-box-success {
+      border-left: 5px solid var(--accent-green);
+      background: var(--accent-green-bg);
+    }
+
+    .card-box-title {
+      font-size: 1.1rem;
+      font-weight: 800;
+      margin-bottom: 12px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin: 24px 0;
-      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
     }
 
-    .node-item {
-      flex: 1;
-      min-width: 200px;
+    .card-box-danger .card-box-title { color: #991b1b; }
+    .card-box-success .card-box-title { color: #166534; }
+
+    .bullet-list {
+      list-style: none;
+    }
+
+    .bullet-list li {
+      position: relative;
+      padding-left: 24px;
+      margin-bottom: 12px;
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .bullet-list li::before {
+      content: "•";
+      position: absolute;
+      left: 6px;
+      color: var(--banorte-red);
+      font-weight: bold;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
+
+    /* LangGraph Flow Cards */
+    .nodes-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin: 28px 0;
+    }
+
+    @media (max-width: 992px) {
+      .nodes-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .node-card {
       background: var(--bg-subtle);
       border: 1px solid var(--border-color);
-      padding: 20px;
-      border-radius: 12px;
+      border-radius: 14px;
+      padding: 24px;
       position: relative;
     }
 
-    .node-num {
-      background: var(--primary-red);
+    .node-tag {
+      background: var(--banorte-red);
       color: white;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 20px;
+      display: inline-block;
       margin-bottom: 12px;
     }
 
-    .node-title {
-      font-weight: 700;
+    .node-name {
+      font-weight: 800;
       font-size: 1rem;
-      margin-bottom: 6px;
+      color: var(--text-primary);
+      margin-bottom: 8px;
     }
 
-    .node-desc {
-      font-size: 0.85rem;
-      color: var(--text-muted);
+    .node-text {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
     }
 
-    /* Media Upload Slot Style */
-    .image-placeholder {
-      border: 2px dashed var(--border-accent);
-      background: var(--bg-subtle);
-      border-radius: 12px;
-      padding: 30px;
-      text-align: center;
-      margin: 20px 0;
-      transition: all 0.2s ease;
-    }
-
-    .image-placeholder:hover {
-      border-color: var(--primary-red);
-      background: var(--primary-red-light);
-    }
-
-    .image-placeholder img {
-      max-width: 100%;
-      border-radius: 8px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .placeholder-text {
-      color: var(--text-dim);
-      font-size: 0.9rem;
-      margin-top: 8px;
-    }
-
-    .code-block {
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: var(--font-code);
-      padding: 20px;
-      border-radius: 10px;
-      font-size: 0.85rem;
-      overflow-x: auto;
-      margin: 16px 0;
-    }
-
-    .links-bar {
+    /* Stack Pill Badges */
+    .tech-stack-container {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 16px;
+      gap: 10px;
+      margin-top: 20px;
     }
 
-    .link-pill {
+    .tech-badge {
       background: var(--bg-subtle);
       border: 1px solid var(--border-color);
-      color: var(--text-main);
-      padding: 8px 16px;
-      border-radius: 20px;
-      text-decoration: none;
-      font-weight: 600;
+      color: var(--text-primary);
+      font-weight: 700;
       font-size: 0.85rem;
-      transition: all 0.2s ease;
+      padding: 8px 16px;
+      border-radius: 30px;
     }
 
-    .link-pill:hover {
-      background: var(--text-main);
-      color: #ffffff;
+    /* Image Display Container */
+    .asset-figure {
+      margin: 28px 0;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--bg-subtle);
+    }
+
+    .asset-figure img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .asset-caption {
+      padding: 14px 20px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: var(--bg-surface);
+      border-top: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    /* Behaviors Table */
+    .table-wrapper {
+      overflow-x: auto;
+      margin-top: 20px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin: 20px 0;
+      font-size: 0.9rem;
     }
 
     th, td {
+      padding: 16px 20px;
       border: 1px solid var(--border-color);
-      padding: 12px 16px;
       text-align: left;
-      font-size: 0.9rem;
     }
 
     th {
       background: var(--bg-subtle);
-      font-weight: 700;
+      font-weight: 800;
+      color: var(--text-primary);
+    }
+
+    td strong {
+      color: var(--banorte-red);
+    }
+
+    .badge-in { background: var(--accent-green-bg); color: var(--accent-green); font-weight: 800; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
+    .badge-out { background: var(--banorte-red-light); color: var(--banorte-red); font-weight: 800; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
+
+    /* Production Links Grid */
+    .links-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .links-grid { grid-template-columns: 1fr; }
+    }
+
+    .prod-link-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-color);
+      padding: 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .prod-link-card:hover {
+      border-color: var(--banorte-red);
+      background: var(--bg-surface);
+      box-shadow: var(--shadow-card);
+    }
+
+    .prod-link-title {
+      font-weight: 800;
+      font-size: 1rem;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .prod-link-url {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
   </style>
 </head>
@@ -333,237 +479,300 @@
       <span class="brand-badge">Banorte IA</span>
       <span>Agente Conversacional CV</span>
     </div>
-    <nav class="nav-steps">
-      <a href="#problema" class="step-btn">1. El Problema</a>
-      <a href="#arquitectura" class="step-btn">2. Arquitectura</a>
-      <a href="#demo" class="step-btn">3. Demo en Vivo</a>
-      <a href="#observabilidad" class="step-btn">4. Observabilidad</a>
-      <a href="#tradeoffs" class="step-btn">5. Trade-offs</a>
-      <a href="#cierre" class="step-btn">6. Cierre</a>
+    <nav class="nav-links">
+      <a href="#motivacion" class="nav-link">Motivación</a>
+      <a href="#langgraph" class="nav-link">LangGraph</a>
+      <a href="#stack" class="nav-link">Tecnología</a>
+      <a href="#guardrails" class="nav-link">Guardrails</a>
+      <a href="#observabilidad" class="nav-link">Observabilidad</a>
+      <a href="#produccion" class="nav-link">Producción</a>
     </nav>
   </header>
 
   <div class="container">
     
-    <!-- Hero / Portada -->
-    <div class="hero-section">
-      <span class="section-tag">Exposición Técnica · 12 Minutos</span>
-      <h1 class="hero-title">Arquitectura RAG Estricta y Representación Agéntica</h1>
-      <p class="hero-subtitle">Demostración técnica del Agente Conversacional para la evaluación del CV de Diego Romero Mora (Senior AI Engineer).</p>
+    <!-- Hero Banner -->
+    <div class="hero">
+      <span class="hero-pretitle">Agente Conversacional RAG · Prueba Técnica Banorte</span>
+      <h1 class="hero-title">Un agente que se niega a alucinar.</h1>
+      <p class="hero-tagline">Sistema de IA generativa fundamentado, trazable y con fallas ruidosas</p>
+      <p class="hero-description">
+        Construido para responder sobre la trayectoria profesional de Diego Romero Mora sin inventar una sola línea, y con cada decisión de retrieval y generación auditable de extremo a extremo.
+      </p>
       
-      <div class="links-bar">
-        <a href="https://banagentchallenge.onrender.com/docs" target="_blank" class="link-pill">📚 Swagger API Docs</a>
-        <a href="https://banagentchallenge.onrender.com/.well-known/agent-card.json" target="_blank" class="link-pill">🃏 A2A Agent Card</a>
-        <a href="https://cloud.langfuse.com" target="_blank" class="link-pill">🔍 Langfuse Traces</a>
-        <a href="https://banagentchallenge.onrender.com/metrics" target="_blank" class="link-pill">📊 Prometheus Metrics</a>
-      </div>
-
-      <div class="agenda-grid">
-        <div class="agenda-card"><strong>01. El Problema (1m)</strong> RAG Estricto vs Chatbot.</div>
-        <div class="agenda-card"><strong>02. Arquitectura (3m)</strong> Nodos LangGraph y Qdrant.</div>
-        <div class="agenda-card"><strong>03. Demo en Vivo (4m)</strong> Pruebas, Anáforas y Langfuse.</div>
-        <div class="agenda-card"><strong>04. Observabilidad (2m)</strong> Métricas Prometheus/Grafana.</div>
-        <div class="agenda-card"><strong>05. Trade-offs (2m)</strong> Guardrails y Fail-Loud.</div>
-        <div class="agenda-card"><strong>06. Cierre (1m)</strong> Aprendizajes y Futuro.</div>
+      <div class="hero-author">
+        <span><strong>Diego Romero Mora</strong> — Generative AI Engineer</span>
       </div>
     </div>
 
-    <!-- 1. El Problema -->
-    <div id="problema" class="section-card">
-      <span class="section-tag">01. El Problema (1 Minuto)</span>
-      <h2 class="section-title">¿Por qué RAG Estricto y no un Chatbot Genérico?</h2>
+    <!-- Metrics Strip -->
+    <div class="metrics-bar">
+      <div class="metric-card">
+        <div class="metric-value">4</div>
+        <div class="metric-label">Nodos de Grafo</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">0</div>
+        <div class="metric-label">Tolerancia a Alucinación</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">3</div>
+        <div class="metric-label">Capas de Observabilidad</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-value">~1.8s</div>
+        <div class="metric-label">P50 Retrieval</div>
+      </div>
+    </div>
+
+    <!-- FIG 01: Motivación -->
+    <div id="motivacion" class="section">
+      <span class="section-fig">FIG. 01 — MOTIVACIÓN</span>
+      <h2 class="section-title">Por qué es necesario un agente así</h2>
       
+      <p style="font-size: 1.05rem; color: var(--text-secondary); margin-bottom: 24px;">
+        Un chatbot conectado a un LLM sin más responde con fluidez, pero no con verdad. En un contexto donde la respuesta representa a una persona real ante un reclutador — o, por extensión, donde un agente responde en nombre de una institución financiera — la fluidez sin fundamentación es un pasivo, no un activo.
+      </p>
+
       <div class="grid-2">
-        <div class="box-callout">
-          <h3>❌ El riesgo del Chatbot Genérico</h3>
-          <p>Un LLM sin guardrails intenta ser amable y responder todo. Ante preguntas ambiguas sobre trayectoria o skills no documentadas, alucina fechas, empresas o tecnologías para "completar la respuesta".</p>
+        <div class="card-box card-box-danger">
+          <div class="card-box-title">⚠️ El riesgo sin control</div>
+          <ul class="bullet-list">
+            <li>Un LLM genérico rellena huecos de información con texto plausible pero inventado.</li>
+            <li>Sin trazabilidad, no hay forma de auditar de dónde salió una afirmación ni de detectar cuándo el sistema falló.</li>
+            <li>Sin manejo explícito de fallas, un error de red se disfraza de respuesta normal — el peor tipo de falla: la silenciosa.</li>
+          </ul>
         </div>
 
-        <div class="box-callout box-green">
-          <h3>✅ El RAG Estricto de este Agente</h3>
-          <p>Prioriza la <strong>fundamentación (Grounding)</strong> sobre la amabilidad. El agente actúa como el representante oficial en 3ra persona y solo afirma hechos evidenciados en la base de datos de conocimiento.</p>
-        </div>
-      </div>
-
-      <!-- Slot para Imagen de Comparativa -->
-      <div class="image-placeholder">
-        <img src="assets/demo_grounding_vs_hallucination.png" alt="Comparativa Grounding vs Alucinación" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div class="placeholder-text" style="display:none;">
-          📷 <strong>Slot para Imagen:</strong> Coloca tu captura en <code>presentation/assets/demo_grounding_vs_hallucination.png</code><br>
-          <em>Muestra la diferencia entre una respuesta alucinada y una respuesta con Grounding estricto.</em>
+        <div class="card-box card-box-success">
+          <div class="card-box-title">🛡️ Lo que este sistema garantiza</div>
+          <ul class="bullet-list">
+            <li><strong>Grounding estricto:</strong> Cada respuesta se ancla a chunks recuperados de Qdrant, filtrados por intención — nunca al conocimiento libre del LLM.</li>
+            <li><strong>Fail-loud:</strong> Si el retrieval devuelve 0 resultados, el sistema lo declara en vez de improvisar.</li>
+            <li><strong>Auditabilidad completa:</strong> Cada turno queda trazado en Langfuse con <code>chunk_ids</code>, <code>chunk_types</code> y <code>top_score</code>.</li>
+          </ul>
         </div>
       </div>
     </div>
 
-    <!-- 2. Arquitectura -->
-    <div id="arquitectura" class="section-card">
-      <span class="section-tag">02. Arquitectura (3-4 Minutos)</span>
-      <h2 class="section-title">Flujo Orquestado en Grafo (LangGraph + Qdrant)</h2>
+    <!-- FIG 02: LangGraph Pipeline -->
+    <div id="langgraph" class="section">
+      <span class="section-fig">FIG. 02 — LANGGRAPH</span>
+      <h2 class="section-title">Arquitectura del pipeline agéntico</h2>
+      
+      <p style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 20px;">
+        Un grafo de estados explícito de cuatro nodos secuenciales — no una sola llamada a un LLM con un prompt largo. Cada nodo tiene una responsabilidad única y es observable de forma independiente.
+      </p>
 
-      <div class="nodes-flow">
-        <div class="node-item">
-          <div class="node-num">1</div>
-          <div class="node-title">Guardrails Entrada</div>
-          <div class="node-desc">Filtro heurístico contra Prompt Injection y cuota máxima de 1,000 caracteres.</div>
+      <div class="nodes-grid">
+        <div class="node-card">
+          <span class="node-tag">NODO 01</span>
+          <div class="node-name">Guardrails de entrada</div>
+          <div class="node-text">Detecta prompt injection e instrucciones maliciosas antes de tocar el resto del grafo.</div>
         </div>
-        <div class="node-item">
-          <div class="node-num">2</div>
-          <div class="node-title">Clasificación Intent</div>
-          <div class="node-desc">LLM ligero clasifica en intenciones (EXPERIENCE, EDUCATION, CONTACT, etc.) con historial.</div>
+
+        <div class="node-card">
+          <span class="node-tag">NODO 02</span>
+          <div class="node-name">Clasificación de intención</div>
+          <div class="node-text">Resuelve anáforas usando historial de sesión ("¿y cuánto tiempo estuvo ahí?" → Teradata).</div>
         </div>
-        <div class="node-item">
-          <div class="node-num">3</div>
-          <div class="node-title">Intent-Aware Retrieval</div>
-          <div class="node-desc">Limpieza de saludos en el query y filtro `MatchAny` por payload `tipo` en Qdrant Cloud.</div>
+
+        <div class="node-card">
+          <span class="node-tag">NODO 03</span>
+          <div class="node-name">Retrieval consciente</div>
+          <div class="node-text">Filtra Qdrant por tipo de chunk (MatchAny) y sanitiza saludos antes de vectorizar.</div>
         </div>
-        <div class="node-item">
-          <div class="node-num">4</div>
-          <div class="node-title">Grounded LLM & Fail-Loud</div>
-          <div class="node-desc">Generación en 3ra persona (Groq / HF) o bloqueo inmediato si hay 0 chunks recuperados.</div>
+
+        <div class="node-card">
+          <span class="node-tag">NODO 04</span>
+          <div class="node-name">Generación fundamentada</div>
+          <div class="node-text">Groq genera la respuesta anclada al contexto; si hay 0 chunks, bloquea la generación libre.</div>
         </div>
       </div>
 
-      <!-- Slot para Diagrama de Arquitectura -->
-      <div class="image-placeholder">
-        <img src="assets/diagrama_arquitectura.png" alt="Diagrama de Arquitectura de Grafo" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div class="placeholder-text" style="display:none;">
-          📷 <strong>Slot para Imagen:</strong> Coloca tu diagrama en <code>presentation/assets/diagrama_arquitectura.png</code><br>
-          <em>Diagrama visual del flujo de los 4 nodos de LangGraph y las conexiones a Qdrant Cloud, Groq y Supabase.</em>
+      <!-- Evidencias de Persistencia Supabase -->
+      <div class="asset-figure">
+        <img src="../assets/SupabaseCheckpoints.png" alt="Supabase Checkpoints">
+        <div class="asset-caption">
+          Checkpoints de sesión en Supabase PostgreSQL (`PostgresSaver`): Mapeo de `thread_id` / `session_id` que garantiza la memoria conversacional entre turnos.
+        </div>
+      </div>
+    </div>
+
+    <!-- FIG 03: Tecnología & Stack -->
+    <div id="stack" class="section">
+      <span class="section-fig">FIG. 03 — TECNOLOGÍA</span>
+      <h2 class="section-title">Decisiones de stack, no defaults</h2>
+      
+      <p style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 20px;">
+        Cada componente se eligió por una razón arquitectónica concreta, no por popularidad.
+      </p>
+
+      <div class="tech-stack-container">
+        <span class="tech-badge">FastAPI (API Modular)</span>
+        <span class="tech-badge">Qdrant Cloud (Vector DB 384d)</span>
+        <span class="tech-badge">Groq LPU (Llama 3.3 / 3.1)</span>
+        <span class="tech-badge">Hugging Face Router (Fallback)</span>
+        <span class="tech-badge">LangGraph (Orquestación)</span>
+        <span class="tech-badge">Supabase Postgres (PostgresSaver)</span>
+        <span class="tech-badge">Langfuse Cloud SDK v3 (Tracing)</span>
+        <span class="tech-badge">Prometheus + Grafana Cloud (Métricas)</span>
+        <span class="tech-badge">slowapi (Rate Limiter)</span>
+      </div>
+
+      <!-- Evidencia Qdrant Chunks -->
+      <div class="asset-figure">
+        <img src="../assets/QdrantChunks.png" alt="Qdrant Chunks Collection">
+        <div class="asset-caption">
+          Inspección de la colección `cv_chunks` en Qdrant Cloud: Chunks estructurados con payload filtrado por `tipo` (`educacion`, `experiencia`, `skills`, `contacto`, `resumen`).
+        </div>
+      </div>
+    </div>
+
+    <!-- FIG 04: Guardrails & Comportamientos -->
+    <div id="guardrails" class="section">
+      <span class="section-fig">FIG. 04 — COMPORTAMIENTO</span>
+      <h2 class="section-title">Los guardrails, en acción</h2>
+      
+      <p style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 20px;">
+        Cinco casos reales que muestran dónde el sistema afirma con seguridad, dónde se niega, y dónde falla ruidosamente en vez de inventar.
+      </p>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo de Consulta</th>
+              <th>Entrada del Usuario</th>
+              <th>Comportamiento Garantizado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge-in">IN-BOUNDS</span></td>
+              <td><em>"¿Qué experiencia tiene Diego en Inteligencia Artificial?"</em></td>
+              <td>Responde con seguridad, anclado a los chunks de experiencia: Teradata, LangGraph, conectores MCP/FastMCP.</td>
+            </tr>
+            <tr>
+              <td><span class="badge-in">ANÁFORA</span></td>
+              <td><em>"¿Y cuánto tiempo estuvo ahí?"</em></td>
+              <td>El clasificador resuelve "ahí" = Teradata usando el historial de sesión y aplica la regla de tiempo pasado.</td>
+            </tr>
+            <tr>
+              <td><span class="badge-in">CONTACTO</span></td>
+              <td><em>"¿Cómo puedo contactar a Diego?"</em></td>
+              <td>Recupera el chunk explícito de contacto (diegoromemora27@gmail.com, 5560438272) — nunca lo infiere ni lo aproxima.</td>
+            </tr>
+            <tr>
+              <td><span class="badge-out">OUT-OF-DOMAIN</span></td>
+              <td><em>"¿Cuál es la receta para tacos al pastor?"</em></td>
+              <td>Corta la ejecución en el clasificador de intención — no gasta tokens ni consulta Qdrant.</td>
+            </tr>
+            <tr>
+              <td><span class="badge-out">FAIL-LOUD</span></td>
+              <td><em>Falla de red hacia el servicio de embeddings (0 chunks)</em></td>
+              <td><em>"En este momento no pude acceder a los datos de la base de conocimiento..."</em> — nunca improvisa.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FIG 05: Observabilidad -->
+    <div id="observabilidad" class="section">
+      <span class="section-fig">FIG. 05 — GRAFANA CLOUD & LANGFUSE</span>
+      <h2 class="section-title">Observabilidad en producción</h2>
+      
+      <p style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 20px;">
+        Trazabilidad punta a punta registrada en Langfuse Cloud y métricas exportadas a Grafana Cloud vía el endpoint <code>/metrics</code>.
+      </p>
+
+      <!-- Grafana Cloud Dashboard Image -->
+      <div class="asset-figure">
+        <img src="../assets/GrafanaCloud.png" alt="Grafana Cloud Dashboard">
+        <div class="asset-caption">
+          Snapshot del Dashboard en Grafana Cloud: Monitoreo en tiempo real del estado UP del servicio, frecuencia de scraping y métricas de scraping.
         </div>
       </div>
 
-      <div class="grid-2">
-        <div>
-          <h4>Decisiones Clave:</h4>
-          <ul style="margin-left: 20px; color: var(--text-muted);">
-            <li><strong>Qdrant + MatchAny:</strong> Evita la "búsqueda semántica ciega" filtrando por la clave <code>tipo</code>.</li>
-            <li><strong>Groq Primary + HF Fallback:</strong> Inferencia rápida (< 600 ms) con conmutación transparente.</li>
-            <li><strong>Chunk Resumen Jerárquico:</strong> Permite obtener la trayectoria completa de empresas en 1 solo chunk.</li>
-          </ul>
+      <!-- Langfuse Tracking Image -->
+      <div class="asset-figure">
+        <img src="../assets/LangFuseTracking.png" alt="Langfuse Tracking Spans">
+        <div class="asset-caption">
+          Trazas en Langfuse Cloud: Spans desglosados de la ejecución agéntica (`guardrails_input`, `classify_intent`, `retrieve_context`, `generate_response`).
         </div>
-        <div>
-          <h4>Sanitización de Embeddings:</h4>
-          <div class="code-block">
-# Limpieza de saludos antes de vectorizar
-clean_query = re.sub(r'^(hola|buenas)[,!\s]*', '', query)
-query_vectors = get_embedding(clean_query)
+      </div>
+
+      <!-- Langfuse Sessions Image -->
+      <div class="asset-figure">
+        <img src="../assets/LangFuseSessions.png" alt="Langfuse Sessions Overview">
+        <div class="asset-caption">
+          Panel de sesiones en Langfuse Cloud: Registro de latencias, costos por turno y trazabilidad de `session_id` y `previous_response_id`.
+        </div>
+      </div>
+    </div>
+
+    <!-- FIG 06: Despliegue y Enlaces -->
+    <div id="produccion" class="section">
+      <span class="section-fig">FIG. 06 — PRODUCCIÓN</span>
+      <h2 class="section-title">Despliegue y enlaces activos</h2>
+
+      <div class="links-grid">
+        <a href="https://banagentchallenge.onrender.com" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Servicio en producción ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Render Cloud</div>
           </div>
-        </div>
-      </div>
-    </div>
+          <div class="prod-link-url">banagentchallenge.onrender.com</div>
+        </a>
 
-    <!-- 3. Demo en Vivo -->
-    <div id="demo" class="section-card">
-      <span class="section-tag">03. Demo en Vivo (4-5 Minutos)</span>
-      <h2 class="section-title">Pruebas Conversacionales y Trazabilidad en Langfuse</h2>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Paso</th>
-            <th>Entrada del Usuario</th>
-            <th>Comportamiento Esperado</th>
-            <th>Validación en Langfuse</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><strong>1. In-Bounds</strong></td>
-            <td><em>"¿Cuál es el último trabajo de Diego?"</em></td>
-            <td>Identifica Teradata (Senior AI Engineer) y habla en pasado según fecha fin.</td>
-            <td><code>chunk_types: ['experiencia']</code></td>
-          </tr>
-          <tr>
-            <td><strong>2. Anáfora</strong></td>
-            <td><em>"¿Y cuánto tiempo estuvo ahí?"</em></td>
-            <td>Clasifica <code>EXPERIENCE</code> resolviendo "ahí" como Teradata mediante el historial.</td>
-            <td><code>session_id</code> encadenado con <code>previous_response_id</code></td>
-          </tr>
-          <tr>
-            <td><strong>3. Out-of-Bounds</strong></td>
-            <td><em>"Dame la receta de tacos al pastor"</em></td>
-            <td>Corta el flujo sin consultar Qdrant ni gastar tokens inútilmente.</td>
-            <td><code>intent: OUT_OF_BOUNDS</code> (0 ms retrieval)</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <!-- Slot para Captura de Langfuse -->
-      <div class="image-placeholder">
-        <img src="assets/langfuse_trace_demo.png" alt="Captura de traza en Langfuse Cloud" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-        <div class="placeholder-text" style="display:none;">
-          📷 <strong>Slot para Imagen:</strong> Coloca tu captura de Langfuse en <code>presentation/assets/langfuse_trace_demo.png</code><br>
-          <em>Muestra el panel de Langfuse Cloud con los `chunk_ids`, `chunk_types` y latencia por span.</em>
-        </div>
-      </div>
-    </div>
-
-    <!-- 4. Observabilidad -->
-    <div id="observabilidad" class="section-card">
-      <span class="section-tag">04. Observabilidad & Confiabilidad (2 Minutos)</span>
-      <h2 class="section-title">Métricas Prometheus y Monitoreo Continuo</h2>
-
-      <div class="grid-2">
-        <div>
-          <p style="color: var(--text-muted); margin-bottom: 16px;">
-            El endpoint <code>/metrics</code> expone contadores nativos para scraping en Grafana Cloud, midiendo latencia por nodo, consumo de tokens y confiabilidad.
-          </p>
-          <ul style="margin-left: 20px; color: var(--text-muted);">
-            <li><code>AGENT_REQUESTS_TOTAL</code>: Solicitudes por estado.</li>
-            <li><code>NODE_EXECUTION_DURATION_SECONDS</code>: Latencia por nodo.</li>
-            <li><code>LLM_TOKENS_TOTAL</code>: Conteo exacto por proveedor.</li>
-          </ul>
-        </div>
-
-        <!-- Slot para Dashboard de Grafana -->
-        <div class="image-placeholder" style="margin: 0;">
-          <img src="assets/grafana_dashboard.png" alt="Dashboard de Grafana Cloud" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-          <div class="placeholder-text" style="display:none;">
-            📷 <strong>Slot para Imagen:</strong> Coloca tu dashboard en <code>presentation/assets/grafana_dashboard.png</code><br>
-            <em>Captura del dashboard de Grafana Cloud monitoreando la aplicación.</em>
+        <a href="https://banagentchallenge.onrender.com/docs" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Documentación Swagger ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">OpenAPI Specs</div>
           </div>
-        </div>
+          <div class="prod-link-url">/docs</div>
+        </a>
+
+        <a href="https://banagentchallenge.onrender.com/health" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Healthcheck ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Estado del Sistema</div>
+          </div>
+          <div class="prod-link-url">/health</div>
+        </a>
+
+        <a href="https://banagentchallenge.onrender.com/.well-known/agent-card.json" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Tarjeta de agente A2A ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Manifiesto Interoperable</div>
+          </div>
+          <div class="prod-link-url">/.well-known/agent-card.json</div>
+        </a>
+
+        <a href="https://banagentchallenge.onrender.com/metrics" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Métricas Prometheus ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Scraping Metrics</div>
+          </div>
+          <div class="prod-link-url">/metrics</div>
+        </a>
+
+        <a href="https://coralbass582.grafana.net/goto/s9sh2x?orgId=stacks-1769587" target="_blank" class="prod-link-card">
+          <div>
+            <div class="prod-link-title">Dashboard Grafana ↗</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Grafana Cloud Live</div>
+          </div>
+          <div class="prod-link-url">coralbass582.grafana.net</div>
+        </a>
       </div>
-    </div>
 
-    <!-- 5. Trade-offs -->
-    <div id="tradeoffs" class="section-card">
-      <span class="section-tag">05. Decisiones de Ingeniería & Trade-offs (2 Minutos)</span>
-      <h2 class="section-title">Confiabilidad sobre Disponibilidad</h2>
-
-      <div class="grid-2">
-        <div class="box-callout box-blue">
-          <h3>🛡️ Guardrail Fail-Loud (0 Chunks)</h3>
-          <p>Si la base de datos o el embedding fallan y el RAG devuelve 0 chunks en una consulta informativa, el agente <strong>falla explícitamente</strong> notificando al usuario en lugar de dejar que el LLM invente la trayectoria de Diego.</p>
-        </div>
-
-        <div class="box-callout">
-          <h3>⚡ Embeddings por API (0 MB RAM)</h3>
-          <p>Se eligió consumir la API de Hugging Face Router con reintentos exponenciales en lugar de cargar modelos localmente en PyTorch, permitiendo que la app corra ligera (~120 MB RAM) en contenedores Docker.</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- 6. Cierre -->
-    <div id="cierre" class="section-card">
-      <span class="section-tag">06. Cierre & Trabajo Futuro (1 Minuto)</span>
-      <h2 class="section-title">Aprendizajes y Oportunidades de Mejora</h2>
-
-      <div class="grid-2">
+      <div style="margin-top: 36px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
         <div>
-          <h4>Lo que resolveríamos con más tiempo:</h4>
-          <ul style="margin-left: 20px; color: var(--text-muted); margin-top: 10px;">
-            <li><strong>Modelo Local de Embeddings (In-Process):** Para eliminar la dependencia HTTP de embeddings durante caídas globales de APIs.</li>
-            <li><strong>Re-ranking Liviano:** Implementar una etapa de re-ordenamiento de candidates ($k=6 \rightarrow 3$).</li>
-            <li><strong>Versionado Automático de Chunks:** Pipeline CI/CD para re-indexar automáticamente al cambiar `cv_sample.txt`.</li>
-          </ul>
+          <strong style="font-size: 1.1rem; color: var(--text-primary);">Diego Romero Mora</strong>
+          <div style="font-size: 0.9rem; color: var(--text-muted);">Generative AI Engineer — Prueba técnica Banorte</div>
         </div>
-
-        <div class="box-callout box-green">
-          <h3>👨‍💻 Presentado por:</h3>
-          <p><strong>Diego Romero Mora</strong><br>Senior AI Engineer<br>
-          <a href="mailto:diegoromemora27@gmail.com" style="color: var(--text-main); font-weight: 600;">diegoromemora27@gmail.com</a></p>
-        </div>
+        <a href="mailto:diegoromemora27@gmail.com" style="color: var(--banorte-red); font-weight: 700; text-decoration: none; font-size: 0.95rem;">diegoromemora27@gmail.com</a>
       </div>
     </div>
 
