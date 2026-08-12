@@ -114,8 +114,9 @@ import re
 
 def clean_query_for_embedding(query: str) -> str:
     """Remueve saludos e interjecciones comunes para no distorsionar el vector semántico."""
-    cleaned = re.sub(r'^(hola|buenas|buenas noches|buenas tardes|buenos días|saludos|hey|hi|hello)[,!\s]*', '', query, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'^(buenas\s+noches|buenas\s+tardes|buenos\s+días|hola|buenas|saludos|hey|hi|hello)[,!\s]*', '', query, flags=re.IGNORECASE).strip()
     return cleaned if len(cleaned) > 2 else query
+
 
 
 def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[str]] = None, score_threshold: float = 0.0) -> List[Dict[str, Any]]:
