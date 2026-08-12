@@ -47,6 +47,7 @@ def classify_user_intent(user_message: str) -> str:
     response = generate_llm_response(
         system_prompt="Eres un clasificador estricto de intenciones.",
         input_items=[{"role": "user", "content": prompt}],
+        model_name="llama-3.1-8b-instant",
         temperature=0.0,
         max_tokens=20
     )

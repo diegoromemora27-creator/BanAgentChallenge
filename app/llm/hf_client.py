@@ -1,5 +1,6 @@
 """
 Cliente de fallback para interactuar con Hugging Face Inference API / Router.
+Incluye un timeout estricto para evitar cuelgues si Hugging Face entra en Cold Start o Rate Limit.
 """
 
 import logging
@@ -9,10 +10,11 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Se configura el router de Hugging Face mediante SDK compatible de OpenAI
+# Se configura el router de Hugging Face mediante SDK compatible de OpenAI con timeout estricto de 8 segundos
 hf_client = OpenAI(
     api_key=settings.HF_TOKEN or "dummy_token_if_empty",
-    base_url="https://router.huggingface.co/v1"
+    base_url="https://router.huggingface.co/v1",
+    timeout=8.0
 )
 
 def call_hf_llm_fallback(
@@ -35,7 +37,7 @@ def call_hf_llm_fallback(
     Returns:
         Dict con el texto generado y metadatos del proveedor.
     """
-    logger.info("Invocando LLM Fallback (Hugging Face: %s)...", model_name)
+    logger.info("Invocando LLM Fallback de respaldo (Hugging Face: %s)...", model_name)
 
     messages = [{"role": "system", "content": system_prompt}]
     messages.extend(input_items)
@@ -50,5 +52,5 @@ def call_hf_llm_fallback(
         output_text = response.choices[0].message.content or ""
         return {"text": output_text, "provider": "Hugging Face", "raw": response}
     except Exception as exc:
-        logger.error("Error durante la llamada a Hugging Face Fallback API: %s", exc)
+        logger.error("Error o timeout durante la llamada a Hugging Face Fallback API: %s", exc)
         raise exc

@@ -165,6 +165,7 @@ def node_generate_response(state: AgentState) -> AgentState:
             llm_out = generate_llm_response(
                 system_prompt=system_prompt,
                 input_items=input_items,
+                model_name="llama-3.3-70b-versatile",
                 temperature=0.2,
                 max_tokens=600
             )
