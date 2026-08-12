@@ -75,7 +75,7 @@ def get_qdrant_client() -> QdrantClient:
 qdrant_client = get_qdrant_client()
 
 
-from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, PayloadSchemaType
+from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, MatchAny, PayloadSchemaType
 
 def ensure_collection_exists():
     """Garantiza la existencia de la colección en Qdrant e índice de metadatos."""
