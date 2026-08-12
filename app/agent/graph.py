@@ -153,6 +153,15 @@ def node_generate_response(state: AgentState) -> AgentState:
                 return state
 
             context_chunks = state.get("retrieved_context", [])
+            if not context_chunks and intent not in ["GREETING_OR_META"]:
+                reply_text = "En este momento no pude acceder a los datos de la base de conocimiento del CV de Diego para responder tu consulta. Por favor, intenta realizar tu pregunta nuevamente en unos momentos."
+                state["llm_response"] = reply_text
+                state["latency_ms"] = 0.0
+                state["provider"] = "Fallback System"
+                state["usage"] = {}
+                logger.warning("[PASO 4/4: GENERACIÓN LLM] 0 chunks recuperados para intención '%s'. Devolviendo mensaje explícito sin alucinación.", intent)
+                return state
+
             if not context_chunks:
                 context_str = "No se encontraron datos ni evidencias en el CV para la consulta realizada."
             else:
