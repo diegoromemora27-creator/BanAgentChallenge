@@ -120,7 +120,14 @@ class ResponsesRequest(BaseModel):
     model: Optional[str] = Field(None, description="Identificador del modelo solicitado")
     input: List[ResponseInputItem] = Field(..., description="Historial de mensajes e instrucciones")
     instructions: Optional[str] = Field(None, description="Instrucciones del sistema opcionales")
-    previous_response_id: Optional[str] = Field(None, description="ID de respuesta anterior para encadenar sesión")
+    previous_response_id: Optional[str] = Field(
+        None,
+        alias="previous_response_id",
+        description="ID de respuesta anterior para encadenar sesión"
+    )
+    previousResponseId: Optional[str] = Field(None, description="Alias camelCase para previous_response_id")
+    session_id: Optional[str] = Field(None, description="Identificador directo de sesión")
+    sessionId: Optional[str] = Field(None, description="Alias camelCase para session_id")
     tools: Optional[List[Dict[str, Any]]] = Field(None, description="Herramientas disponibles (opcional)")
     stream: bool = Field(False, description="Flag para habilitar streaming (por defecto False)")
 

@@ -319,8 +319,19 @@ def create_response(request: Request, req: ResponsesRequest):
     Endpoint interoperable compatible con la especificación abierta Open Responses (openresponses.org).
     Soporta rutas /v1/responses y /responses, streaming SSE cuando stream=true y procesamiento síncrono.
     """
-    session_id = req.previous_response_id or f"session_{uuid.uuid4().hex[:8]}"
-    
+    session_id = (
+        req.previous_response_id or 
+        req.previousResponseId or 
+        req.session_id or 
+        req.sessionId or 
+        f"session_{uuid.uuid4().hex[:8]}"
+    )
+
+    logger.info(
+        "=== [PARLEY DIAGNÓSTICO SESIÓN] session_id: %s | previous_response_id: %s | previousResponseId: %s | session_id_req: %s ===",
+        session_id, req.previous_response_id, req.previousResponseId, req.session_id
+    )
+
     # Extraer el último mensaje del usuario desde el array de input
     if not req.input:
         raise HTTPException(status_code=400, detail="El parámetro 'input' no puede estar vacío.")
