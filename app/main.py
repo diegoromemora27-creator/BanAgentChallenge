@@ -5,10 +5,12 @@ Expone los endpoints /health, /chat, /v1/responses (Open Responses) y /cv/upload
 
 import time
 import uuid
+import json
 import logging
 from typing import Optional, Any
 from fastapi import FastAPI, Depends, Header, Query, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -110,7 +112,7 @@ def verify_api_key(
 # Endpoints HTTP
 # ==========================================
 
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
 def root():
     """Endpoint raíz que redirige la bienvenida e indica la documentación."""
     return {
@@ -180,7 +182,7 @@ def get_agent_card(request: Request):
         },
         "capabilities": {
             "open_responses": True,
-            "streaming": False,
+            "streaming": True,
             "file_input": True,
             "image_input": False
         },
@@ -309,21 +311,14 @@ def _extract_text_from_content(content: Any) -> str:
     return str(content)
 
 
-@app.post("/v1/responses", response_model=OpenResponsesPayload, dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
-@app.post("/responses", response_model=OpenResponsesPayload, dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
+@app.post("/v1/responses", dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
+@app.post("/responses", dependencies=[Depends(verify_api_key)], tags=["Open Responses API Standard"])
 @limiter.limit("60/minute")
 def create_response(request: Request, req: ResponsesRequest):
     """
     Endpoint interoperable compatible con la especificación abierta Open Responses (openresponses.org).
-    Soporta rutas /v1/responses y /responses, mapea modelos arbitrarios a cv-agent-v1 y procesa entradas complejas/adjuntos.
+    Soporta rutas /v1/responses y /responses, streaming SSE cuando stream=true y procesamiento síncrono.
     """
-    if req.stream:
-        # El spec de Open Responses indica rechazar solicitudes de streaming si el servidor solo opera en sync
-        raise HTTPException(
-            status_code=400,
-            detail="Streaming mode (stream=true) is not supported by this agent endpoint. Please set stream=false."
-        )
-
     session_id = req.previous_response_id or f"session_{uuid.uuid4().hex[:8]}"
     
     # Extraer el último mensaje del usuario desde el array de input
@@ -335,6 +330,78 @@ def create_response(request: Request, req: ResponsesRequest):
 
     if not last_user_message.strip():
         last_user_message = "Hola"
+
+    # Si se solicita streaming (stream=True), responder usando Server-Sent Events (SSE)
+    if req.stream:
+        def sse_event_generator():
+            try:
+                result = run_agent_workflow(
+                    message=last_user_message,
+                    session_id=session_id,
+                    system_instructions=req.instructions
+                )
+                reply_text = result["reply"]
+                resp_id = f"resp_{uuid.uuid4().hex[:12]}"
+                msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+
+                # 1. Evento response.created
+                created_evt = {
+                    "type": "response.created",
+                    "response": {
+                        "id": resp_id,
+                        "model": req.model or "cv-agent-v1",
+                        "status": "in_progress"
+                    }
+                }
+                yield f"data: {json.dumps(created_evt)}\n\n"
+
+                # 2. Evento response.text.delta (enviar palabra por palabra para streaming fluido)
+                words = reply_text.split(" ")
+                chunk_size = 4
+                for i in range(0, len(words), chunk_size):
+                    chunk_text = " ".join(words[i:i+chunk_size])
+                    if i + chunk_size < len(words):
+                        chunk_text += " "
+                    delta_evt = {
+                        "type": "response.text.delta",
+                        "response_id": resp_id,
+                        "output_index": 0,
+                        "content_index": 0,
+                        "delta": chunk_text
+                    }
+                    yield f"data: {json.dumps(delta_evt)}\n\n"
+                    time.sleep(0.02)
+
+                # 3. Evento response.completed
+                completed_evt = {
+                    "type": "response.completed",
+                    "response": {
+                        "id": resp_id,
+                        "model": req.model or "cv-agent-v1",
+                        "status": "completed",
+                        "output": [
+                            {
+                                "id": msg_id,
+                                "type": "message",
+                                "role": "assistant",
+                                "content": [{"type": "text", "text": reply_text}]
+                            }
+                        ],
+                        "output_text": reply_text
+                    }
+                }
+                yield f"data: {json.dumps(completed_evt)}\n\n"
+                yield "data: [DONE]\n\n"
+
+            except Exception as stream_err:
+                logger.error("Error en streaming SSE de Open Responses: %s", stream_err)
+                err_evt = {
+                    "type": "error",
+                    "error": {"message": str(stream_err)}
+                }
+                yield f"data: {json.dumps(err_evt)}\n\n"
+
+        return StreamingResponse(sse_event_generator(), media_type="text/event-stream")
 
     try:
         result = run_agent_workflow(
