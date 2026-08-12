@@ -371,7 +371,7 @@ def create_response(request: Request, req: ResponsesRequest):
                 )
                 reply_text = result["reply"]
 
-                # 3. EMITIR FRAMES DE TEXTO EN DELTA CON ENCABEZADOS EVENT: EXPLÍCITOS
+                # 3. EMITIR FRAMES DE TEXTO EN DELTA CON FORMATO ESTRICTO OPEN RESPONSES
                 words = reply_text.split(" ")
                 chunk_size = 4
                 for i in range(0, len(words), chunk_size):
@@ -384,32 +384,12 @@ def create_response(request: Request, req: ResponsesRequest):
                         "response_id": resp_id,
                         "output_index": 0,
                         "content_index": 0,
-                        "delta": chunk_text,
-                        "choices": [
-                            {
-                                "index": 0,
-                                "delta": {"role": "assistant", "content": chunk_text}
-                            }
-                        ]
+                        "delta": chunk_text
                     }
                     yield f"event: response.text.delta\ndata: {json.dumps(delta_evt)}\n\n"
-
-                    # Frame genérico compatible con parsers de OpenAI SSE
-                    openai_evt = {
-                        "id": resp_id,
-                        "object": "chat.completion.chunk",
-                        "choices": [
-                            {
-                                "index": 0,
-                                "delta": {"role": "assistant", "content": chunk_text},
-                                "finish_reason": None
-                            }
-                        ]
-                    }
-                    yield f"event: message\ndata: {json.dumps(openai_evt)}\n\n"
                     time.sleep(0.01)
 
-                # 4. EMITIR EVENTO FINAL Y FINALIZAR EL STREAM
+                # 4. EMITIR EVENTO FINAL Y FINALIZAR EL STREAM (SIN DATA: [DONE])
                 completed_evt = {
                     "type": "response.completed",
                     "response": {
@@ -429,7 +409,6 @@ def create_response(request: Request, req: ResponsesRequest):
                     }
                 }
                 yield f"event: response.completed\ndata: {json.dumps(completed_evt)}\n\n"
-                yield "data: [DONE]\n\n"
 
             except Exception as stream_err:
                 logger.error("Error en streaming SSE de Open Responses: %s", stream_err)
