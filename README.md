@@ -72,6 +72,9 @@ El agente expone sus capacidades a través de una API modular construida en **Fa
   7. `colaboracion_academica` (Docencia en la UNAM en la carrera de Matemáticas Aplicadas y Computación).
   8. `meta` (Chunk explícito anti-alucinaciones).
 
+![Indexación de Chunks en Qdrant Cloud](assets/QdrantChunks.png)
+*Figura 2.1: Inspección de puntos indexados en la colección `cv_chunks` de Qdrant Cloud mostrando payload estructurado con `tipo`, `cv_version`, `institucion` y vectores de 384 dimensiones.*
+
 ### B. Retrieval Consciente de Intención (*Intent-Aware Retrieval*)
 En lugar de una búsqueda semántica "ciega", el retriever utiliza la clasificación previa de intención para aplicar un filtro `MatchAny` por la clave `tipo` en el payload de Qdrant:
 - `CONTACT` $\rightarrow$ `["contacto", "perfil"]`
@@ -84,7 +87,13 @@ Además, se aplica **sanitización de embeddings** (`clean_query_for_embedding`)
 
 ### C. Supabase PostgreSQL (Checkpointer de LangGraph)
 - **Módulo:** `langgraph-checkpoint-postgres` (`PostgresSaver`).
-- **Persistencia de Conversación:** Almacena checkpoints mapeando el `previous_response_id` o `session_id` del usuario, manteniendo la memoria de diálogo entre turnos sin duplicar mensajes en el prompt.
+- **Persistencia de Conversación:** Almacena checkpoints mapeando el `previous_response_id` o `session_id` del usuario en la tabla `checkpoints`, manteniendo la memoria de diálogo entre turnos sin duplicar mensajes en el prompt.
+
+![Checkpoints de Sesiones en Supabase](assets/SupabaseCheckpoints.png)
+*Figura 2.2: Registros de checkpoints por `thread_id` / `session_id` en Supabase PostgreSQL, garantizando la persistencia entre turnos.*
+
+![Esquema Relacional de Supabase Checkpoints](assets/SupabaseSchema.png)
+*Figura 2.3: Visualizador del esquema de la base de datos relacional en Supabase (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes`).*
 
 ---
 
@@ -117,11 +126,25 @@ El sistema utiliza el SDK v3 de Langfuse e inyecta métricas avanzadas de observ
 - **`chunk_types`**: Lista de tipos de contenido recuperados (`['experiencia', 'docencia']`).
 - **`top_score`**: Puntaje de similitud Cosine del candidato #1.
 
+![Langfuse Tracing de Nodos de LangGraph](assets/LangFuseTracking.png)
+*Figura 4.1: Vista detallada de trazas en Langfuse Cloud mostrando la ejecución desglosada por spans (`guardrails_input`, `classify_intent`, `retrieve_context`, `generate_response`) con manejo transparente de errores.*
+
+![Langfuse Sessions Overview](assets/LangFuseSessions.png)
+*Figura 4.2: Panel de sesiones agrupadas en Langfuse Cloud registrando la duración, latencia y consumo por `session_id` / `previous_response_id`.*
+
+---
+
 ### B. Grafana Cloud & Prometheus Metrics
-El endpoint `/metrics` expone métricas nativas para scraping en Grafana Cloud:
-- **`AGENT_REQUESTS_TOTAL`**: Total de solicitudes procesadas.
-- **`NODE_EXECUTION_DURATION_SECONDS`**: Latencia desglosada por cada uno de los 4 nodos de LangGraph.
-- **`LLM_TOKENS_TOTAL`**: Total de tokens procesados por proveedor (`Groq`, `Hugging Face`).
+El endpoint `/metrics` expone métricas nativas para scraping continuo en Grafana Cloud. Puedes inspeccionar el dashboard público activo en:
+🔗 **[Dashboard de Grafana Cloud - Agent RAG Observability](https://coralbass582.grafana.net/goto/s9sh2x?orgId=stacks-1769587)**
+
+![Grafana Cloud Overview & Scrape Health](assets/GrafanaCloud.png)
+*Figura 4.3: Dashboard en tiempo real en Grafana Cloud monitoreando el estado UP del servicio, frecuencia de scraping del endpoint `/metrics` y nuevas series agregadas.*
+
+#### Métricas Principales Exportadas:
+- **`AGENT_REQUESTS_TOTAL`**: Total de solicitudes procesadas agrupadas por status (`success`, `fallback`).
+- **`NODE_EXECUTION_DURATION_SECONDS`**: Histograma de latencia desglosada por nodo de LangGraph.
+- **`LLM_TOKENS_TOTAL`**: Conteo exacto de tokens por proveedor (`Groq`, `Hugging Face`).
 
 ---
 
@@ -153,6 +176,7 @@ BanAgentChallenge/
 │   ├── logging_config.py         # Formateador de logs JSON estructurados
 │   ├── metrics.py                # Métricas Prometheus
 │   └── main.py                   # Instancia FastAPI principal y registro de routers
+├── assets/                       # Evidencias visuales (Grafana, Langfuse, Qdrant, Supabase)
 ├── data/
 │   └── cv_sample.txt             # CV crudo oficial de Diego Romero Mora
 ├── tests/
@@ -218,5 +242,6 @@ Accede a Swagger en: `http://localhost:7860/docs`
 - 🩺 **Endpoint de Healthcheck:** `https://banagentchallenge.onrender.com/health`
 - 🃏 **Tarjeta de Agente A2A:** `https://banagentchallenge.onrender.com/.well-known/agent-card.json`
 - 📊 **Endpoint de Métricas Prometheus:** `https://banagentchallenge.onrender.com/metrics`
+- 📈 **Dashboard Activo Grafana Cloud:** [Grafana Cloud - RAG Observability](https://coralbass582.grafana.net/goto/s9sh2x?orgId=stacks-1769587)
 - 🔍 **Trazabilidad Langfuse Cloud:** `https://cloud.langfuse.com`
 - 🗄️ **Cluster Qdrant Cloud:** `cv_chunks` (384 dimensiones, Cosine)
