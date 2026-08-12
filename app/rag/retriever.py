@@ -26,10 +26,11 @@ def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
     Genera vectores de embeddings semánticos reales consumiendo la API de Hugging Face.
     Utiliza el modelo oficial 'sentence-transformers/all-MiniLM-L6-v2' (dimensión 384).
-    Implementa reintentos exponenciales para garantizar la confiabilidad sin cargar modelos pesados en RAM.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
-    api_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
+    
+    # Endpoint oficial de Hugging Face Inference para Feature Extraction
+    api_url = "https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2"
     headers = {"Authorization": f"Bearer {settings.HF_TOKEN}"} if settings.HF_TOKEN else {}
 
     max_retries = 3
@@ -39,26 +40,38 @@ def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
                 api_url,
                 headers=headers,
                 json={"inputs": inputs, "options": {"wait_for_model": True}},
-                timeout=6
+                timeout=8
             )
             if response.status_code == 200:
                 data = response.json()
-                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
-                    if isinstance(data[0][0], list):
+                if isinstance(data, list) and len(data) > 0:
+                    # Si retorna embedding por token (3D array), promediamos los tokens
+                    if isinstance(data[0], list) and len(data[0]) > 0 and isinstance(data[0][0], list):
                         sentence_embeddings = []
                         for sent in data:
                             dim = len(sent[0])
                             avg_vec = [sum(sent[t][d] for t in range(len(sent))) / len(sent) for d in range(dim)]
                             sentence_embeddings.append(avg_vec)
                         return sentence_embeddings
-                    else:
+                    elif isinstance(data[0], list) and isinstance(data[0][0], (float, int)):
                         return data
-            logger.warning("Intento %d/%d: API de Hugging Face respondió status %d", attempt, max_retries, response.status_code)
+            logger.warning("Intento %d/%d: API de Hugging Face respondió status %d: %s", attempt, max_retries, response.status_code, response.text[:200])
         except Exception as exc:
             logger.warning("Intento %d/%d: Fallo al obtener embedding de Hugging Face API (%s)", attempt, max_retries, exc)
 
         if attempt < max_retries:
             time.sleep(0.5 * attempt)
+
+    # Respaldo ligero vía Open-AI style Router o FastEmbed si el endpoint legacy da 400
+    try:
+        if hf_embedding_client:
+            res = hf_embedding_client.embeddings.create(
+                model="sentence-transformers/all-MiniLM-L6-v2",
+                input=inputs
+            )
+            return [item.embedding for item in res.data]
+    except Exception as router_exc:
+        logger.error("Error también en fallback de embeddings: %s", router_exc)
 
     logger.error("No se pudo obtener embeddings semánticos de Hugging Face tras %d reintentos.", max_retries)
     return []
