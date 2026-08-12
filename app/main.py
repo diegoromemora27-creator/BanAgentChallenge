@@ -355,7 +355,7 @@ def create_response(request: Request, req: ResponsesRequest):
                 }
                 yield f"data: {json.dumps(created_evt)}\n\n"
 
-                # 2. Evento response.text.delta (enviar palabra por palabra para streaming fluido)
+                # 2. Evento response.text.delta (enviar palabra por palabra con compatibilidad OpenAI/Vercel AI SDK/Open Responses)
                 words = reply_text.split(" ")
                 chunk_size = 4
                 for i in range(0, len(words), chunk_size):
@@ -367,7 +367,13 @@ def create_response(request: Request, req: ResponsesRequest):
                         "response_id": resp_id,
                         "output_index": 0,
                         "content_index": 0,
-                        "delta": chunk_text
+                        "delta": chunk_text,
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"role": "assistant", "content": chunk_text}
+                            }
+                        ]
                     }
                     yield f"data: {json.dumps(delta_evt)}\n\n"
                     time.sleep(0.02)
@@ -387,7 +393,8 @@ def create_response(request: Request, req: ResponsesRequest):
                                 "content": [{"type": "text", "text": reply_text}]
                             }
                         ],
-                        "output_text": reply_text
+                        "output_text": reply_text,
+                        "text": reply_text
                     }
                 }
                 yield f"data: {json.dumps(completed_evt)}\n\n"
@@ -412,10 +419,22 @@ def create_response(request: Request, req: ResponsesRequest):
         reply_text = result["reply"]
         metrics = result.get("metrics", {})
 
+        choices_payload = [
+            {
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": reply_text
+                },
+                "finish_reason": "stop"
+            }
+        ]
+
         response_payload = OpenResponsesPayload(
             id=f"resp_{uuid.uuid4().hex}",
             created_at=int(time.time()),
             model=req.model or "cv-agent-v1",
+            choices=choices_payload,
             output=[
                 OutputMessage(
                     id=f"msg_{uuid.uuid4().hex}",

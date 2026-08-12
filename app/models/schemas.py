@@ -108,7 +108,7 @@ class ResponsesRequest(BaseModel):
 
 class OutputContentText(BaseModel):
     """Estructura del texto de salida dentro de OutputItem."""
-    type: str = "output_text"
+    type: str = "text"
     text: str
     annotations: List[Any] = Field(default_factory=list)
 
@@ -129,6 +129,7 @@ class OpenResponsesPayload(BaseModel):
     created_at: int
     status: str = "completed"
     model: str
+    choices: Optional[List[Any]] = None
     output: List[OutputMessage]
     output_text: str
     usage: Dict[str, int] = Field(default_factory=dict, description="Uso de tokens en el spec de Open Responses")
