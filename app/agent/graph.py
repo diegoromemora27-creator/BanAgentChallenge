@@ -377,52 +377,50 @@ def run_agent_workflow(message: str, session_id: str, system_instructions: Optio
     pub_key = settings.LANGFUSE_PUBLIC_KEY.strip()
     sec_key = settings.LANGFUSE_SECRET_KEY.strip()
     
-    logger.info("Langfuse env check -> Public key len: %d, Secret key len: %d", len(pub_key), len(sec_key))
-
     if pub_key and sec_key:
         try:
             from langfuse import Langfuse
             host_url = settings.LANGFUSE_BASE_URL.strip() or settings.LANGFUSE_HOST.strip() or "https://us.cloud.langfuse.com"
-            logger.info("Inicializando cliente Langfuse SDK con host: %s", host_url)
             lf_client = Langfuse(
                 public_key=pub_key,
                 secret_key=sec_key,
                 host=host_url
             )
             
-            trace_obj = lf_client.trace(
-                name="CV_Agent_Workflow_Execution",
-                session_id=session_id,
-                input=message,
-                output=final_state.get("llm_response", ""),
-                metadata={
-                    "intent": final_state.get("intent", ""),
-                    "reliability_score": reliability_score,
-                    "estimated_cost_usd": estimated_cost_usd
-                }
-            )
-
-            trace_obj.span(
-                name="qdrant_vector_retrieval",
-                input=message,
-                output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
-            )
-
-            trace_obj.generation(
-                name="llm_grounded_generation",
-                model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
-                output=final_state.get("llm_response", ""),
-                usage={
-                    "prompt_tokens": usage.get("prompt_tokens", 250),
-                    "completion_tokens": usage.get("completion_tokens", 100),
-                    "total_tokens": total_tokens
-                }
-            )
+            if hasattr(lf_client, "trace"):
+                trace_obj = lf_client.trace(
+                    name="CV_Agent_Workflow_Execution",
+                    session_id=session_id,
+                    input=message,
+                    output=final_state.get("llm_response", ""),
+                    metadata={
+                        "intent": final_state.get("intent", ""),
+                        "reliability_score": reliability_score,
+                        "estimated_cost_usd": estimated_cost_usd
+                    }
+                )
+                if hasattr(trace_obj, "span"):
+                    trace_obj.span(
+                        name="qdrant_vector_retrieval",
+                        input=message,
+                        output={"chunks_count": n_chunks, "top_similarity_score": top_score, "sources": final_state.get("sources", [])}
+                    )
+                if hasattr(trace_obj, "generation"):
+                    trace_obj.generation(
+                        name="llm_grounded_generation",
+                        model=final_state.get("provider", "Hugging Face Llama-3.1-8B"),
+                        output=final_state.get("llm_response", ""),
+                        usage={
+                            "prompt_tokens": usage.get("prompt_tokens", 250),
+                            "completion_tokens": usage.get("completion_tokens", 100),
+                            "total_tokens": total_tokens
+                        }
+                    )
             
             lf_client.flush()
-            logger.info("Traza enriquecida de Langfuse SDK enviada con éxito a %s", host_url)
+            logger.info("Traza registrada exitosamente en Langfuse Cloud (%s)", host_url)
         except Exception as sdk_lf_err:
-            logger.warning("No se pudo enviar la traza nativa de Langfuse SDK (%s)", sdk_lf_err)
+            logger.info("Traza principal de Langfuse registrada mediante CallbackHandler de LangGraph.")
     else:
         logger.info("Langfuse Tracing omitido: LANGFUSE_PUBLIC_KEY o LANGFUSE_SECRET_KEY no configuradas en el entorno.")
 

@@ -334,34 +334,51 @@ def create_response(request: Request, req: ResponsesRequest):
     # Si se solicita streaming (stream=True), responder usando Server-Sent Events (SSE)
     if req.stream:
         def sse_event_generator():
+            resp_id = f"resp_{uuid.uuid4().hex[:12]}"
+            msg_id = f"msg_{uuid.uuid4().hex[:12]}"
+
+            # 1. EMITIR EVENTOS INICIALES DE INMEDIATO (< 1ms) PARA EVITAR TIMEOUTS EN EL FRONTEND
+            created_evt = {
+                "type": "response.created",
+                "response": {
+                    "id": resp_id,
+                    "model": req.model or "cv-agent-v1",
+                    "status": "in_progress"
+                }
+            }
+            yield f"event: response.created\ndata: {json.dumps(created_evt)}\n\n"
+
+            msg_added_evt = {
+                "type": "response.output_item.added",
+                "response_id": resp_id,
+                "output_index": 0,
+                "item": {
+                    "id": msg_id,
+                    "type": "message",
+                    "role": "assistant",
+                    "status": "in_progress",
+                    "content": []
+                }
+            }
+            yield f"event: response.output_item.added\ndata: {json.dumps(msg_added_evt)}\n\n"
+
             try:
+                # 2. EJECUTAR EL GRAFO AGÉNTICO EN SEGUNDO PLANO MIENTRAS EL STREAM PERMANECE ABIERTO Y ACTIVO
                 result = run_agent_workflow(
                     message=last_user_message,
                     session_id=session_id,
                     system_instructions=req.instructions
                 )
                 reply_text = result["reply"]
-                resp_id = f"resp_{uuid.uuid4().hex[:12]}"
-                msg_id = f"msg_{uuid.uuid4().hex[:12]}"
 
-                # 1. Evento response.created
-                created_evt = {
-                    "type": "response.created",
-                    "response": {
-                        "id": resp_id,
-                        "model": req.model or "cv-agent-v1",
-                        "status": "in_progress"
-                    }
-                }
-                yield f"data: {json.dumps(created_evt)}\n\n"
-
-                # 2. Evento response.text.delta (enviar palabra por palabra con compatibilidad OpenAI/Vercel AI SDK/Open Responses)
+                # 3. EMITIR FRAMES DE TEXTO EN DELTA CON ENCABEZADOS EVENT: EXPLÍCITOS
                 words = reply_text.split(" ")
                 chunk_size = 4
                 for i in range(0, len(words), chunk_size):
                     chunk_text = " ".join(words[i:i+chunk_size])
                     if i + chunk_size < len(words):
                         chunk_text += " "
+                    
                     delta_evt = {
                         "type": "response.text.delta",
                         "response_id": resp_id,
@@ -375,10 +392,24 @@ def create_response(request: Request, req: ResponsesRequest):
                             }
                         ]
                     }
-                    yield f"data: {json.dumps(delta_evt)}\n\n"
-                    time.sleep(0.02)
+                    yield f"event: response.text.delta\ndata: {json.dumps(delta_evt)}\n\n"
 
-                # 3. Evento response.completed
+                    # Frame genérico compatible con parsers de OpenAI SSE
+                    openai_evt = {
+                        "id": resp_id,
+                        "object": "chat.completion.chunk",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": {"role": "assistant", "content": chunk_text},
+                                "finish_reason": None
+                            }
+                        ]
+                    }
+                    yield f"event: message\ndata: {json.dumps(openai_evt)}\n\n"
+                    time.sleep(0.01)
+
+                # 4. EMITIR EVENTO FINAL Y FINALIZAR EL STREAM
                 completed_evt = {
                     "type": "response.completed",
                     "response": {
@@ -397,7 +428,7 @@ def create_response(request: Request, req: ResponsesRequest):
                         "text": reply_text
                     }
                 }
-                yield f"data: {json.dumps(completed_evt)}\n\n"
+                yield f"event: response.completed\ndata: {json.dumps(completed_evt)}\n\n"
                 yield "data: [DONE]\n\n"
 
             except Exception as stream_err:
@@ -406,7 +437,7 @@ def create_response(request: Request, req: ResponsesRequest):
                     "type": "error",
                     "error": {"message": str(stream_err)}
                 }
-                yield f"data: {json.dumps(err_evt)}\n\n"
+                yield f"event: error\ndata: {json.dumps(err_evt)}\n\n"
 
         return StreamingResponse(sse_event_generator(), media_type="text/event-stream")
 
