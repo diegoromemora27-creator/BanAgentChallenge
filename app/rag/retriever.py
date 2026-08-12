@@ -19,46 +19,49 @@ hf_embedding_client = OpenAI(
     base_url="https://router.huggingface.co/v1"
 )
 
+import time
 import requests
 
 def get_embedding(text_or_texts: str | List[str]) -> List[List[float]]:
     """
     Genera vectores de embeddings semánticos reales consumiendo la API de Hugging Face.
     Utiliza el modelo oficial 'sentence-transformers/all-MiniLM-L6-v2' (dimensión 384).
-    Consume 0 MB de RAM local.
+    Implementa reintentos exponenciales para garantizar la confiabilidad sin cargar modelos pesados en RAM.
     """
     inputs = [text_or_texts] if isinstance(text_or_texts, str) else text_or_texts
     api_url = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2"
     headers = {"Authorization": f"Bearer {settings.HF_TOKEN}"} if settings.HF_TOKEN else {}
 
-    try:
-        response = requests.post(api_url, headers=headers, json={"inputs": inputs, "options": {"wait_for_model": True}}, timeout=5)
-        if response.status_code == 200:
-            data = response.json()
-            if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
-                if isinstance(data[0][0], list):
-                    sentence_embeddings = []
-                    for sent in data:
-                        dim = len(sent[0])
-                        avg_vec = [sum(sent[t][d] for t in range(len(sent))) / len(sent) for d in range(dim)]
-                        sentence_embeddings.append(avg_vec)
-                    return sentence_embeddings
-                else:
-                    return data
-    except Exception as exc:
-        logger.warning("Fallo al obtener embedding semántico de Hugging Face API (%s). Usando fallback...", exc)
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(
+                api_url,
+                headers=headers,
+                json={"inputs": inputs, "options": {"wait_for_model": True}},
+                timeout=6
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0 and isinstance(data[0], list):
+                    if isinstance(data[0][0], list):
+                        sentence_embeddings = []
+                        for sent in data:
+                            dim = len(sent[0])
+                            avg_vec = [sum(sent[t][d] for t in range(len(sent))) / len(sent) for d in range(dim)]
+                            sentence_embeddings.append(avg_vec)
+                        return sentence_embeddings
+                    else:
+                        return data
+            logger.warning("Intento %d/%d: API de Hugging Face respondió status %d", attempt, max_retries, response.status_code)
+        except Exception as exc:
+            logger.warning("Intento %d/%d: Fallo al obtener embedding de Hugging Face API (%s)", attempt, max_retries, exc)
 
-    # Fallback liviano en caso de desconexión momentánea de HF
-    import hashlib
-    vectors = []
-    for text in inputs:
-        vec = []
-        for i in range(settings.EMBEDDING_VECTOR_SIZE):
-            h = hashlib.sha256(f"{text}_{i}".encode('utf-8')).hexdigest()
-            val = (int(h[:8], 16) / 0xFFFFFFFF) * 2 - 1
-            vec.append(val)
-        vectors.append(vec)
-    return vectors
+        if attempt < max_retries:
+            time.sleep(0.5 * attempt)
+
+    logger.error("No se pudo obtener embeddings semánticos de Hugging Face tras %d reintentos.", max_retries)
+    return []
 
 
 # Cliente Qdrant Vector DB
