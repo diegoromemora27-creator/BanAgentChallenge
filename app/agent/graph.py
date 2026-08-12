@@ -122,9 +122,9 @@ def node_retrieve_context(state: AgentState) -> AgentState:
             
             with RETRIEVAL_LATENCY_SECONDS.time():
                 if intent == "GREETING_OR_META":
-                    results = retrieve_cv_context(query=search_query, top_k=2, tipo=tipos_filtro)
+                    results = retrieve_cv_context(query=search_query, top_k=2, tipo=tipos_filtro, score_threshold=0.0)
                 else:
-                    results = retrieve_cv_context(query=search_query, top_k=4, tipo=tipos_filtro)
+                    results = retrieve_cv_context(query=search_query, top_k=4, tipo=tipos_filtro, score_threshold=0.0)
 
             state["retrieved_context"] = results
             state["sources"] = [r["texto"] for r in results]

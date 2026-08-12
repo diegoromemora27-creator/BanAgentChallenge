@@ -107,9 +107,15 @@ def ensure_collection_exists():
         logger.error("Error verificando/creando la colección en Qdrant: %s", err)
 
 
-from qdrant_client.models import Distance, VectorParams, Filter, FieldCondition, MatchValue, MatchAny, PayloadSchemaType
+import re
 
-def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[str]] = None) -> List[Dict[str, Any]]:
+def clean_query_for_embedding(query: str) -> str:
+    """Remueve saludos e interjecciones comunes para no distorsionar el vector semántico."""
+    cleaned = re.sub(r'^(hola|buenas|buenas noches|buenas tardes|buenos días|saludos|hey|hi|hello)[,!\s]*', '', query, flags=re.IGNORECASE).strip()
+    return cleaned if len(cleaned) > 2 else query
+
+
+def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[str]] = None, score_threshold: float = 0.0) -> List[Dict[str, Any]]:
     """
     Realiza una búsqueda semántica de información relevante del CV en Qdrant.
 
@@ -117,14 +123,18 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[st
         query: Pregunta o texto de consulta.
         top_k: Número máximo de resultados a recuperar.
         tipo: Filtro opcional por tipo o lista de tipos de chunk.
+        score_threshold: Umbral mínimo de similitud Cosine.
 
     Returns:
         Lista de diccionarios con el texto recuperado, score de similitud y metadatos.
     """
     ensure_collection_exists()
 
+    # Limpieza de saludos en el texto del query únicamente para el cálculo de embeddings
+    clean_query = clean_query_for_embedding(query)
+
     # Generación de vector de la consulta vía API
-    query_vectors = get_embedding(query)
+    query_vectors = get_embedding(clean_query)
     if not query_vectors:
         return []
     
@@ -157,11 +167,14 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[st
 
         extracted_context = []
         for r in results:
-            extracted_context.append({
-                "texto": r.payload.get("texto", ""),
-                "score": r.score,
-                "metadata": r.payload
-            })
+            # Umbral de similitud para eliminar vectores ruidosos
+            if r.score >= score_threshold:
+                extracted_context.append({
+                    "id": str(getattr(r, "id", "")),
+                    "texto": r.payload.get("texto", ""),
+                    "score": r.score,
+                    "metadata": r.payload
+                })
         return extracted_context
 
     except Exception as exc:

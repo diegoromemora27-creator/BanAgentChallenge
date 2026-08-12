@@ -123,13 +123,22 @@ def build_chunks(cv_dict: Dict[str, Any], cv_version: str) -> List[Dict[str, Any
     })
 
     # 2. Experiencia Laboral
-    for exp in cv_dict.get("experiencia", []):
+    exp_list = cv_dict.get("experiencia", [])
+    for exp in exp_list:
         tecnologias = ", ".join(exp.get("tecnologias", []))
         logros = "; ".join(exp.get("logros", []))
         texto = f"{exp.get('puesto', '')} en {exp.get('empresa', '')} ({exp.get('periodo', '')}): {exp.get('descripcion', '')}. Tecnologías: {tecnologias}. Logros: {logros}"
         chunks.append({
             "texto": texto,
             "metadata": {"tipo": "experiencia", "cv_version": cv_version, **exp}
+        })
+
+    # 2b. Chunk Resumen Jerárquico de Trayectoria Completa
+    if exp_list:
+        resumen_trayectoria = "; ".join(f"{e.get('puesto', '')} en {e.get('empresa', '')} ({e.get('periodo', '')})" for e in exp_list)
+        chunks.append({
+            "texto": f"Resumen de trayectoria profesional completa de {nombre}: Ha ocupado {len(exp_list)} puestos clave: {resumen_trayectoria}.",
+            "metadata": {"tipo": "experiencia", "cv_version": cv_version, "es_resumen": True}
         })
 
     # 3. Proyectos

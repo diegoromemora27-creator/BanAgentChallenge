@@ -24,13 +24,17 @@ def log_interaction_structured(
     Ideal para observabilidad en Hugging Face Spaces / Render / Langfuse.
     """
     top_score = retrieved_chunks[0]["score"] if retrieved_chunks else None
-    
+    chunk_ids = [c.get("id") or c.get("metadata", {}).get("id") or "chunk" for c in retrieved_chunks]
+    chunk_types = [c.get("metadata", {}).get("tipo", "unknown") for c in retrieved_chunks]
+
     log_payload = {
         "event": "agent_interaction",
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "session_id": session_id,
         "query": query,
         "n_chunks_retrieved": len(retrieved_chunks),
+        "chunk_ids": chunk_ids,
+        "chunk_types": chunk_types,
         "top_score": top_score,
         "response_length": len(response_text),
         "latency_ms": round(latency_ms, 2),
