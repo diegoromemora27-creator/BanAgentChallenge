@@ -24,7 +24,8 @@ from app.models.schemas import (
     OutputContentText,
     AgentCardSchema,
     AgentAuthentication,
-    AgentCapabilities
+    AgentCapabilities,
+    AgentInterface
 )
 from app.agent.graph import run_agent_workflow
 from app.rag.ingest import ingest_cv
@@ -116,16 +117,38 @@ def root():
 
 
 @app.get("/.well-known/agent-card.json", response_model=AgentCardSchema, tags=["Agent Metadata (A2A)"])
-def get_agent_card():
+def get_agent_card(request: Request):
     """
     Endpoint público que expone el manifiesto de la tarjeta de agente A2A.
     Usado por plataformas como Parley o catálogos A2A para autocompletar formularios y descubrir el agente.
     """
+    base_url = str(request.base_url).rstrip("/")
+    responses_endpoint = f"{base_url}/responses"
+    v1_responses_endpoint = f"{base_url}/v1/responses"
+
+    interfaces = [
+        AgentInterface(name="open_responses", protocol="open_responses", url=responses_endpoint),
+        AgentInterface(name="Open Responses", protocol="open_responses", url=v1_responses_endpoint)
+    ]
+
+    prompts_list = [
+        "¿Cuál es el perfil profesional y experiencia del candidato?",
+        "¿Qué proyectos de IA y RAG ha desarrollado?",
+        "¿Cuáles son sus principales habilidades y tecnologías dominadas?",
+        "¿Tiene experiencia con FastAPI, LangChain y bases de datos vectoriales?",
+        "¿Qué logros destacan en su trayectoria laboral?",
+        "¿Cómo puedo contactar al candidato?"
+    ]
+
     return AgentCardSchema(
-        name="Agente Conversacional CV · Banorte Challenge",
-        description="Agente RAG estricto para responder sobre la experiencia laboral, habilidades, proyectos y perfil profesional del candidato.",
+        name="Agente Conversacional CV · Diego Romero Mora",
+        description="Agente RAG estricto para responder sobre la experiencia laboral, habilidades, proyectos y perfil profesional de Diego Romero Mora.",
         version=settings.VERSION,
-        responses_url="/v1/responses",
+        supportedInterfaces=interfaces,
+        interfaces=interfaces,
+        responses_url=responses_endpoint,
+        url=responses_endpoint,
+        open_responses_url=responses_endpoint,
         authentication=AgentAuthentication(
             type="bearer",
             header="Authorization",
@@ -137,14 +160,9 @@ def get_agent_card():
             file_input=True,
             image_input=False
         ),
-        starter_prompts=[
-            "¿Cuál es el perfil profesional y experiencia del candidato?",
-            "¿Qué proyectos de IA y RAG ha desarrollado?",
-            "¿Cuáles son sus principales habilidades y tecnologías dominadas?",
-            "¿Tiene experiencia con FastAPI, LangChain y bases de datos vectoriales?",
-            "¿Qué logros destacan en su trayectoria laboral?",
-            "¿Cómo puedo contactar al candidato?"
-        ]
+        starter_prompts=prompts_list,
+        prompts=prompts_list,
+        sample_prompts=prompts_list
     )
 
 

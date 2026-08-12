@@ -138,6 +138,12 @@ class OpenResponsesPayload(BaseModel):
 # 4. Esquema para Tarjeta de Agente A2A (.well-known/agent-card.json)
 # ==========================================
 
+class AgentInterface(BaseModel):
+    name: str = "open_responses"
+    protocol: Optional[str] = "open_responses"
+    url: str = "/responses"
+
+
 class AgentCapabilities(BaseModel):
     open_responses: bool = True
     streaming: bool = False
@@ -155,8 +161,14 @@ class AgentCardSchema(BaseModel):
     name: str
     description: str
     version: str
+    supportedInterfaces: List[AgentInterface]
+    interfaces: List[AgentInterface]
     responses_url: str
+    url: str
+    open_responses_url: str
     authentication: AgentAuthentication
     capabilities: AgentCapabilities
     starter_prompts: List[str]
+    prompts: List[str]
+    sample_prompts: List[str]
 

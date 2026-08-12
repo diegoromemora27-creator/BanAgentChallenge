@@ -23,6 +23,8 @@ class TestAgentCardAndOpenResponses(unittest.TestCase):
         self.assertIn("name", data)
         self.assertIn("description", data)
         self.assertIn("version", data)
+        self.assertIn("supportedInterfaces", data)
+        self.assertIn("interfaces", data)
         self.assertIn("starter_prompts", data)
         self.assertIn("authentication", data)
         self.assertIn("capabilities", data)
