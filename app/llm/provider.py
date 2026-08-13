@@ -1,7 +1,7 @@
 """
 Orquestador resiliente de proveedores LLM.
-Establece Groq API como proveedor PRIMARIO (con fallback multi-modelo interno: Llama-3.3-70B -> Llama-3.1-8B -> Qwen)
-y conmuta a Hugging Face únicamente como último recurso si toda la infraestructura de Groq no responde.
+Establece Groq API como proveedor PRIMARIO (con fallback multi-modelo interno de 11 modelos: Llama 3.3 70B, Llama 3.1 8B, Groq Compound, Groq Compound Mini, GPT-OSS 120B/20B, Qwen 3.6 27B, ALLaM 2 7B, Safeguard & Prompt Guards)
+y conmuta a Hugging Face Router multi-modelo únicamente si toda la infraestructura de Groq agota sus cuotas o no responde.
 """
 
 import logging

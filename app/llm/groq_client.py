@@ -20,11 +20,15 @@ groq_client = OpenAI(
 GROQ_MODELS_FALLBACK_ORDER = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
+    "groq/compound",
+    "groq/compound-mini",
     "openai/gpt-oss-120b",
     "openai/gpt-oss-20b",
     "qwen/qwen3.6-27b",
-    "groq/compound",
-    "allam-2-7b"
+    "allam-2-7b",
+    "openai/gpt-oss-safeguard-20b",
+    "meta-llama/llama-prompt-guard-2-86m",
+    "meta-llama/llama-prompt-guard-2-22m",
 ]
 
 def call_groq_llm(
