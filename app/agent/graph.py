@@ -110,9 +110,9 @@ def node_retrieve_context(state: AgentState) -> AgentState:
             INTENT_TO_TIPOS = {
                 "CONTACT": ["contacto", "perfil"],
                 "EDUCATION": ["educacion", "cursos", "certificaciones"],
-                "EXPERIENCE": ["experiencia", "docencia"],
-                "SKILLS": ["skills"],
-                "PROJECTS": ["proyectos"],
+                "EXPERIENCE": ["experiencia", "docencia", "proyecto", "proyectos"],
+                "SKILLS": ["skills", "experiencia", "proyecto", "proyectos"],
+                "PROJECTS": ["proyecto", "proyectos", "experiencia"],
                 "GREETING_OR_META": ["perfil", "contacto", "meta"]
             }
 
@@ -155,12 +155,12 @@ def node_generate_response(state: AgentState) -> AgentState:
             context_chunks = state.get("retrieved_context", [])
             if not context_chunks and intent not in ["GREETING_OR_META"]:
                 reply_text = (
-                    "No encontré información específica en la base de conocimiento del CV de Diego sobre esa consulta exacta.\n\n"
-                    "💡 **Sugerencias:** Puedes probar reformulando tu pregunta o consultar sobre:\n"
-                    "- 💼 **Trayectoria y Experiencia:** Empresas, roles y proyectos pasados.\n"
-                    "- 🚀 **Proyectos de IA:** Desarrollos en RAG, agentes y arquitectura de software.\n"
-                    "- 🛠️ **Habilidades Técnicas:** Frameworks, lenguajes de programación y herramientas.\n"
-                    "- 🎓 **Educación:** Formación académica y certificaciones."
+                    "No encontré información específica en la base de conocimiento del CV de Diego para esa pregunta exacta.\n\n"
+                    "💡 **Te sugiero probar reformulando tu consulta sobre alguno de los siguientes temas disponibles:**\n"
+                    "- 🚀 **Proyectos de IA & RAG:** Sistema RAG agéntico BanAgent Challenge, agentes autónomos y conectores FastMCP.\n"
+                    "- 💼 **Trayectoria Profesional:** Su rol como Senior AI Automation Engineer en Teradata y empresas anteriores.\n"
+                    "- 🛠️ **Stack Técnico:** Experiencia con Python, FastAPI, LangGraph, Qdrant Cloud, Groq LPU, Docker y observabilidad.\n"
+                    "- 🎓 **Educación y Contacto:** Formación académica, logros y datos de contacto directo."
                 )
                 state["llm_response"] = reply_text
                 state["latency_ms"] = 0.0

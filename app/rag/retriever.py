@@ -179,6 +179,34 @@ def retrieve_cv_context(query: str, top_k: int = 4, tipo: Optional[str | List[st
                     "score": r.score,
                     "metadata": r.payload
                 })
+
+        # Fallback de alta disponibilidad: Si el filtro por tipo no devolvió nada, reintentar búsqueda abierta sin filtro
+        if not extracted_context and query_filter is not None:
+            logger.info("Filtro por tipo (%s) devolvió 0 resultados. Reintentando búsqueda vectorial abierta sin filtro...", tipo)
+            if hasattr(qdrant_client, "query_points"):
+                response_unfiltered = qdrant_client.query_points(
+                    collection_name=settings.QDRANT_COLLECTION_NAME,
+                    query=query_vector,
+                    query_filter=None,
+                    limit=top_k
+                )
+                results_unfiltered = response_unfiltered.points
+            else:
+                results_unfiltered = qdrant_client.search(
+                    collection_name=settings.QDRANT_COLLECTION_NAME,
+                    query_vector=query_vector,
+                    query_filter=None,
+                    limit=top_k
+                )
+            for r in results_unfiltered:
+                if r.score >= score_threshold:
+                    extracted_context.append({
+                        "id": str(getattr(r, "id", "")),
+                        "texto": r.payload.get("texto", ""),
+                        "score": r.score,
+                        "metadata": r.payload
+                    })
+
         return extracted_context
 
     except Exception as exc:
